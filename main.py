@@ -15,7 +15,10 @@ async def root():
 async def consulta_id(id: int):
     try:
         engine = create_engine(mysql_url)
+
         df = pd.read_sql(f'SELECT * FROM cgh_fae WHERE id = {id}', con=engine)
         return df.to_json()
     except Exception as e:
-        return {'error': e}
+        query = f'SELECT * FROM cgh_fae WHERE id = {id}'
+        return {'error': e,
+                'query': query}
