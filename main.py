@@ -22,6 +22,7 @@ config = {
 }
 print('-------------')
 print(config)
+print('-------------')
 
 try:
     engine = mysql.connector.connect(**config)
