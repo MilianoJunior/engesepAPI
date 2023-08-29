@@ -14,11 +14,13 @@ password = os.getenv('MYSQLPASSWORD')
 host = os.getenv('MYSQLHOST')
 port = os.getenv('MYSQLPORT')
 database = os.getenv('MYSQLDATABASE')
+port = os.getenv('MYSQLPORT')
 config = {
+    'host': host,
     'user': user,
     'password': password,
-    'host': host,
-    'database': database
+    'database': database,
+    'port': port,
 }
 print('-------------')
 print(config)
