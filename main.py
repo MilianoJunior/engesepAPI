@@ -41,7 +41,7 @@ async def root():
         except Exception as e:
             erro_1 = f'Erro na conexão com o banco de dados 1:{str(e)}'
 
-        df = pd.read_sql(f'SELECT * FROM cgh_fae WHERE id = {id}', con=engine).to_json()
+        df = pd.read_sql(f'SELECT * FROM cgh_fae WHERE id = 2', con=engine).to_json()
     except Exception as e:
         erro_2 = f'Erro na conexão com o banco de dados 2:{str(e)}'
         df = {'error': erro_1 + "\n" + erro_2}
