@@ -4,7 +4,7 @@ import pandas as pd
 import os
 app = FastAPI()
 
-mysql_url = os.getenv('MySQL.MYSQL_URL')
+mysql_url = os.getenv('MYSQL_URL')
 print('URL: ',mysql_url)
 @app.get("/")
 async def root():
