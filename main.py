@@ -8,7 +8,12 @@ mysql_url = os.getenv('MYSQL_URL')
 print('URL: ',mysql_url)
 @app.get("/")
 async def root():
-    return {"greeting": "Hello, World!", "message": "Welcome to FastAPI!"}
+    try:
+        engine = create_engine(mysql_url)
+        df = pd.read_sql(f'SELECT * FROM cgh_fae WHERE id = {id}', con=engine).to_json()
+    except Exception as e:
+        df = {'error': e}
+    return {"greeting": "Hello, World!", "message": "Welcome to FastAPI!", 'df': df}
 
 
 @app.get("/consulta_id/{id}")
