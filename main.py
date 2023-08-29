@@ -22,7 +22,7 @@ config = {
     'database': database,
     'port': port,
 }
-print('-------------')
+print('---------------')
 print(config)
 print('-------------')
 
@@ -40,12 +40,14 @@ app = FastAPI()
 @app.get("/")
 async def root():
     df = ''
-    # try:
-    #     engine = mysql.connector.connect(**config)
-    # except Exception as e:
-    #     df = f'Erro na conexão com o banco de dados 1:{str(e)}'
-
-    return {"greeting": "Hello, World!", "message": "Welcome to FastAPI!", 'df': df}
+    try:
+        engine = mysql.connector.connect(**config)
+        df = pd.read_sql(f'SELECT * FROM cgh_fae WHERE id = {id}', con=engine)
+        engine.close()
+    except mysql.connector.Error as err:
+        engine.close()
+        return {'error': str(err)}
+    return df.to_json()
 
 
 @app.get("/consulta_id/{id}")
