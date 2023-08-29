@@ -11,7 +11,7 @@ async def root():
     return {"greeting": "Hello, World!", "message": "Welcome to FastAPI!"}
 
 
-@app.get("consulta_id/{id}")
+@app.get("/consulta_id/{id}")
 async def consulta_id(id: int):
     try:
         engine = create_engine(mysql_url)
