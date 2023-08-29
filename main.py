@@ -25,9 +25,11 @@ print(config)
 
 try:
     engine = mysql.connector.connect(**config)
-except Exception as e:
-    df = f'Erro na conexão com o banco de dados 1:{str(e)}'
-print(engine)
+except mysql.connector.Error as err:
+    print(f'Erro na conexão com o banco de dados 1:{str(err)}')
+    print(err)
+    print('-------------')
+    engine.close()
 print('-------------')
 
 
