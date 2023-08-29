@@ -2,6 +2,4 @@ fastapi==0.100.0
 hypercorn==0.14.4
 pandas==2.0.3
 python-dotenv==0.21.1
-pymysql==1.1.0
-SQLAlchemy==2.0.20
-mysqlclient==2.2.0
+mysql-connector-python==8.1.0

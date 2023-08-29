@@ -1,8 +1,11 @@
 from fastapi import FastAPI
-from sqlalchemy import create_engine
+import mysql.connector
+from mysql.connector import errorcode
 import pandas as pd
 import os
-app = FastAPI()
+
+
+
 
 # mysql+mysqlconnector://<user>:<password>@<host>[:<port>]/<dbname>
 mysql_url = os.getenv('MYSQL_URL')
@@ -11,6 +14,13 @@ password = os.getenv('MYSQLPASSWORD')
 host = os.getenv('MYSQLHOST')
 port = os.getenv('MYSQLPORT')
 database = os.getenv('MYSQLDATABASE')
+config = {
+    'user': user,
+    'password': password,
+    'host': host,
+    'database': database,
+    'raise_on_warnings': True
+}
 print('Informações de conexão:')
 print('URL: ',mysql_url)
 print('user: ',user)
@@ -21,12 +31,13 @@ print('database: ',database)
 print('-----------------------')
 url = f'mysql://{user}:{password}@{host}:{port}/{database}'
 
+app = FastAPI()
 @app.get("/")
 async def root():
     try:
         # tratamento de erro da conexão
         try:
-            engine = create_engine(mysql_url)
+            engine = mysql.connector.connect(**config)
         except Exception as e:
             erro_1 = f'Erro na conexão com o banco de dados 1:{str(e)}'
 
