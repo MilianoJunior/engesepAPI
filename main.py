@@ -1,18 +1,20 @@
 from fastapi import FastAPI
 import mysql.connector
 from mysql.connector import errorcode
+from pydantic import BaseModel
 import pandas as pd
 import os
+from dotenv import load_dotenv
 
-mysql_url = os.getenv('MYSQL_URL')
+load_dotenv()
+
 user  = os.getenv('MYSQLUSER')
 password = os.getenv('MYSQLPASSWORD')
 host = os.getenv('MYSQLHOST')
-port = os.getenv('MYSQLPORT')
 database = os.getenv('MYSQLDATABASE')
-port = os.getenv('MYSQLPORT')
+port = os.getenv('MYSQLPORT', 3306)
 bind_address = os.getenv('BIND', '0.0.0.0')
-port = int(os.getenv("PORT", default=8000))
+
 
 config = {
     'host': host,
@@ -21,18 +23,19 @@ config = {
     'database': database,
     'port': port,
 }
-
+for key, value in config.items():
+    print(f'{key}: {value}')
 # preciso criar um comando sql para criar um banco de dados com base nesta classe: User
 # preciso acrescentar um campo para o id como chave primaria
-# class User(BaseModel):
-#     name: str
-#     tel: str
-#     birth: str
-#     email: str
-#     password: str
-#     usina: str
-#     id_usina: int
-#     privilegios: int
+class User(BaseModel):
+    nome: str
+    telefone: str
+    nascimento: str
+    email: str
+    senha: str
+    usina: str
+    id_usina: int
+    privilegios: int
 
 query = f"CREATE TABLE usuarios (id INT AUTO_INCREMENT PRIMARY KEY, nome VARCHAR(255), telefone VARCHAR(255), nascimento VARCHAR(255), email VARCHAR(255), senha VARCHAR(255), usina VARCHAR(255), id_usina INT, privilegios INT)"
 # preciso criar um comando sql para criar um banco de dados com base nesta classe: Usinas
@@ -47,9 +50,9 @@ query = f"CREATE TABLE usuarios (id INT AUTO_INCREMENT PRIMARY KEY, nome VARCHAR
 # class Cghs(BaseModel):
 #     df: pd.DataFrame
 
-class User:
-    password: str
-    user: str
+# class User:
+#     password: str
+#     user: str
 
 # user = 'miliano'
 # telefone = '123456789'
@@ -70,13 +73,7 @@ app = FastAPI()
 '''
 Função que se conecta ao banco de dados.
 '''
-def connect_database():
-    try:
-        connection = mysql.connector.connect(**config)
-        return connection
-    except mysql.connector.Error as err:
-        print(f"Failed to connect to database: {err}")
-        raise
+
 
 '''
 Sistema de autenticação
@@ -85,8 +82,8 @@ Sistema de autenticação
 def root():
     return {'message': 'EngeSEP API!'}
 
-@app.post('/login')
-def login(user, password):
+@app.post('/login/')
+async def login(user, password):
     try:
         connection = connect_database()
         cursor = connection.cursor()
@@ -104,32 +101,43 @@ def login(user, password):
         cursor.close()
         connection.close()
 
-@app.post('/cadastro')
-def cadastro(user, telefone, nascimento, email, senha, usina, id_usina, privilegios):
+def connect_database():
+    try:
+        connection = mysql.connector.connect(**config)
+        return connection
+    except mysql.connector.Error as err:
+        print(f"Failed to connect to database: {err}")
+        raise
+@app.post('/cadastro/')
+async def cadastro(user: User):
     try:
         connection = connect_database()
         cursor = connection.cursor()
-        query = f"SELECT * FROM usuarios WHERE email='{user}'"
+        query = f"SELECT * FROM usuarios WHERE nome='{user.nome}'"
         cursor.execute(query)
         result = cursor.fetchall()
+        print('Resultados: ', result)
         if len(result) == 0:
-            values = (user, telefone, nascimento, email, senha, usina, id_usina, privilegios)
+            values = (user.nome, user.telefone, user.nascimento, user.email, user.senha, user.usina, user.id_usina, user.privilegios)
             query = f"INSERT INTO usuarios (nome, telefone, nascimento, email, senha, usina, id_usina, privilegios) VALUES {values}"
             cursor.execute(query)
             connection.commit()
             return {'status': 'Usuário cadastrado com sucesso.'}
         else:
+            print('Usuário já cadastrado.')
             return {'status': 'Usuário já cadastrado.'}
     except mysql.connector.Error as err:
         print(f"Failed to connect to database: {err}")
         raise
     finally:
-        cursor.close()
-        connection.close()
+        if 'cursor' in locals() and cursor:
+            cursor.close()
+        if 'connection' in locals() and connection:
+            connection.close()
 
 # if __name__ == '__main__':
 #     import uvicorn
-#     uvicorn.run("main:app", host=bind_address, port=port, log_level="info")
+#     uvicorn.run("main:app", host=bind_address, port=8000, log_level="info")
     # hypercorn main:app --bind "[::]:$PORT"
     # uvicorn.run(app, host='localhost', port=8000)
 
