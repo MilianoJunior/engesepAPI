@@ -24,30 +24,47 @@ config = {
 
 # preciso criar um comando sql para criar um banco de dados com base nesta classe: User
 # preciso acrescentar um campo para o id como chave primaria
-class User(BaseModel):
-    name: str
-    tel: str
-    birth: str
-    email: str
-    password: str
-    usina: str
-    id_usina: int
-    privilegios: int
+# class User(BaseModel):
+#     name: str
+#     tel: str
+#     birth: str
+#     email: str
+#     password: str
+#     usina: str
+#     id_usina: int
+#     privilegios: int
 
 query = f"CREATE TABLE usuarios (id INT AUTO_INCREMENT PRIMARY KEY, nome VARCHAR(255), telefone VARCHAR(255), nascimento VARCHAR(255), email VARCHAR(255), senha VARCHAR(255), usina VARCHAR(255), id_usina INT, privilegios INT)"
 # preciso criar um comando sql para criar um banco de dados com base nesta classe: Usinas
 # preciso acrescentar um campo para o id da usina
-class Usinas(BaseModel):
-    nome: str
-    table_name: str
-    numero_turbinas: int
-    localizacao: str
-    potencia_instalada: float
+# class Usinas(BaseModel):
+#     nome: str
+#     table_name: str
+#     numero_turbinas: int
+#     localizacao: str
+#     potencia_instalada: float
+#
+# class Cghs(BaseModel):
+#     df: pd.DataFrame
 
-class Cghs(BaseModel):
-    df: pd.DataFrame
+class User:
+    password: str
+    user: str
 
-
+# user = 'miliano'
+# telefone = '123456789'
+# nascimento = '01/01/2000'
+# email = 'jrmfilho23@gmail.com'
+# senha = '123456'
+# usina = 'cgh fae'
+# id_usina = 1
+# privilegios = 1
+#
+#
+# values = ','.join([user, telefone, nascimento, email, senha, usina, id_usina, privilegios])
+# print(values)
+#
+# raise Exception
 app = FastAPI()
 
 '''
@@ -65,11 +82,11 @@ def connect_database():
 Sistema de autenticação
 '''
 @app.post('/login')
-def login(user: User):
+def login(user, password):
     try:
         connection = connect_database()
         cursor = connection.cursor()
-        query = f"SELECT * FROM usuarios WHERE email='{user.email}' AND senha='{user.password}'"
+        query = f"SELECT * FROM usuarios WHERE email='{user}' AND senha='{password}'"
         cursor.execute(query)
         result = cursor.fetchall()
         if len(result) == 0:
@@ -84,15 +101,16 @@ def login(user: User):
         connection.close()
 
 @app.post('/cadastro')
-def cadastro(user: User):
+def cadastro(user, telefone, nascimento, email, senha, usina, id_usina, privilegios):
     try:
         connection = connect_database()
         cursor = connection.cursor()
-        query = f"SELECT * FROM usuarios WHERE email='{user.email}'"
+        query = f"SELECT * FROM usuarios WHERE email='{user}'"
         cursor.execute(query)
         result = cursor.fetchall()
         if len(result) == 0:
-            query = f"INSERT INTO usuarios (nome, telefone, nascimento, email, senha, usina, id_usina, privilegios) VALUES ('{user.name}', '{user.tel}', '{user.birth}', '{user.email}', '{user.password}', '{user.usina}', '{user.id_usina}', '{user.privilegios}')"
+            values = (user, telefone, nascimento, email, senha, usina, id_usina, privilegios)
+            query = f"INSERT INTO usuarios (nome, telefone, nascimento, email, senha, usina, id_usina, privilegios) VALUES {values}"
             cursor.execute(query)
             connection.commit()
             return {'status': 'Usuário cadastrado com sucesso.'}
