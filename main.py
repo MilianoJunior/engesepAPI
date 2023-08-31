@@ -1,8 +1,6 @@
 from fastapi import FastAPI
 import mysql.connector
 from mysql.connector import errorcode
-from pydantic import BaseModel
-from pydantic import ValidationError
 import pandas as pd
 import os
 
@@ -13,6 +11,8 @@ host = os.getenv('MYSQLHOST')
 port = os.getenv('MYSQLPORT')
 database = os.getenv('MYSQLDATABASE')
 port = os.getenv('MYSQLPORT')
+bind_address = os.getenv('BIND', '0.0.0.0')
+port = int(os.getenv("PORT", default=8000))
 
 config = {
     'host': host,
@@ -81,6 +81,10 @@ def connect_database():
 '''
 Sistema de autenticação
 '''
+@app.get('/')
+def root():
+    return {'message': 'EngeSEP API!'}
+
 @app.post('/login')
 def login(user, password):
     try:
@@ -122,6 +126,12 @@ def cadastro(user, telefone, nascimento, email, senha, usina, id_usina, privileg
     finally:
         cursor.close()
         connection.close()
+
+# if __name__ == '__main__':
+#     import uvicorn
+#     uvicorn.run("main:app", host=bind_address, port=port, log_level="info")
+    # hypercorn main:app --bind "[::]:$PORT"
+    # uvicorn.run(app, host='localhost', port=8000)
 
 '''
 A api necessita das seguintes funções:
