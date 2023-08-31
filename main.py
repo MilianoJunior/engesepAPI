@@ -135,9 +135,9 @@ async def cadastro(user: User):
         if 'connection' in locals() and connection:
             connection.close()
 
-# if __name__ == '__main__':
-#     import uvicorn
-#     uvicorn.run("main:app", host=bind_address, port=8000, log_level="info")
+if __name__ == '__main__':
+    import uvicorn
+    uvicorn.run("main:app", host=bind_address, port=8000, log_level="info")
     # hypercorn main:app --bind "[::]:$PORT"
     # uvicorn.run(app, host='localhost', port=8000)
 
