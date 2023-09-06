@@ -1,147 +1,117 @@
+# importações
+from mysql.connector import errorcode
+from multiprocessing import Process
+from pydantic import BaseModel
+from dotenv import load_dotenv
 from fastapi import FastAPI
 import mysql.connector
-from mysql.connector import errorcode
-from pydantic import BaseModel
 import pandas as pd
 import os
-from dotenv import load_dotenv
 
-load_dotenv()
+# minhas classes
+from api.usuario.autenticacao.auth import AuthenticationManager
+# from api.usuario.dados import profile
+# from api.usuarios.politicas_acesso import access
 
-user  = os.getenv('MYSQLUSER')
-password = os.getenv('MYSQLPASSWORD')
-host = os.getenv('MYSQLHOST')
-database = os.getenv('MYSQLDATABASE')
-port = os.getenv('MYSQLPORT', 3306)
-bind_address = os.getenv('BIND', '0.0.0.0')
-
-
-config = {
-    'host': host,
-    'user': user,
-    'password': password,
-    'database': database,
-    'port': port,
-}
-for key, value in config.items():
-    print(f'{key}: {value}')
-# preciso criar um comando sql para criar um banco de dados com base nesta classe: User
-# preciso acrescentar um campo para o id como chave primaria
-class User(BaseModel):
-    nome: str
-    telefone: str
-    nascimento: str
-    email: str
-    senha: str
-    usina: str
-    id_usina: int
-    privilegios: int
-
-query = f"CREATE TABLE usuarios (id INT AUTO_INCREMENT PRIMARY KEY, nome VARCHAR(255), telefone VARCHAR(255), nascimento VARCHAR(255), email VARCHAR(255), senha VARCHAR(255), usina VARCHAR(255), id_usina INT, privilegios INT)"
-# preciso criar um comando sql para criar um banco de dados com base nesta classe: Usinas
-# preciso acrescentar um campo para o id da usina
-# class Usinas(BaseModel):
-#     nome: str
-#     table_name: str
-#     numero_turbinas: int
-#     localizacao: str
-#     potencia_instalada: float
-#
-# class Cghs(BaseModel):
-#     df: pd.DataFrame
-
-# class User:
-#     password: str
-#     user: str
-
-# user = 'miliano'
-# telefone = '123456789'
-# nascimento = '01/01/2000'
-# email = 'jrmfilho23@gmail.com'
-# senha = '123456'
-# usina = 'cgh fae'
-# id_usina = 1
-# privilegios = 1
-#
-#
-# values = ','.join([user, telefone, nascimento, email, senha, usina, id_usina, privilegios])
-# print(values)
-#
-# raise Exception
 app = FastAPI()
 
+'''Sistema de autenticação'''
+
+auth = AuthenticationManager()  # registro a classe Auth no app
+print('Classe Auth registrada no app com sucesso.')
+app.post('/login/')(auth.authenticate)  # registro a função login no app
+
+'''Sistema de rotas por token'''
+# app.post('/token/')(auth.token)  # registro a função token no app
 '''
 Função que se conecta ao banco de dados.
 '''
-
-
 '''
 Sistema de autenticação
 '''
-@app.get('/')
-def root():
-    return {'message': 'EngeSEP API!'}
+'''Testes unitários'''
+def test_api():
+    import requests
+    import json
+    import unittest
+    print('------------------------')
+    print('\nTestes unitários\n')
+    print('------------------------')
+    cont = 0
+    def print_teste(var,response, cont=cont):
+        cont += 1
+        teste = "True" if response.json()['status'] == var else "Erro"
+        if teste == "Erro":
+            print(response.json())
+        print(cont, teste + ' - ' + var)
+        print('-------------------------------------------------')
 
-@app.post('/login/')
-async def login(user, password):
-    try:
-        connection = connect_database()
-        cursor = connection.cursor()
-        query = f"SELECT * FROM usuarios WHERE email='{user}' AND senha='{password}'"
-        cursor.execute(query)
-        result = cursor.fetchall()
-        if len(result) == 0:
-            return {'status': 'Usuário não encontrado.'}
-        else:
-            return {'status': 'Usuário encontrado.'}
-    except mysql.connector.Error as err:
-        print(f"Failed to connect to database: {err}")
-        raise
-    finally:
-        cursor.close()
-        connection.close()
+    # Test Login
+    url = 'http://127.0.0.1:8000/login/'
+    body = {
+            "email": "milianojunior39@gmail.com",
+            "password": "123456"
+        }
+    headers = {'Content-type': 'application/json'}
+    response = requests.post(url, data=json.dumps(body), headers=headers)
+    # login com sucesso
+    var = 'Usuário autenticado com sucesso.'
+    print_teste(var,response)
+    # login com falha no usuário
+    body = {
+            "email": "milianojunior39@g",
+            "password": "123456"
+        }
+    response = requests.post(url, data=json.dumps(body), headers=headers)
+    var = 'Usuário não encontrado.'
+    print_teste(var,response)
+    # login com falha na senha
+    body = {
+            "email": "milianojunior39@gmail.com",
+            "password": "1234567"
+        }
+    response = requests.post(url, data=json.dumps(body), headers=headers)
+    var = 'Senha incorreta.'
+    print_teste(var,response)
 
-def connect_database():
-    try:
-        connection = mysql.connector.connect(**config)
-        return connection
-    except mysql.connector.Error as err:
-        print(f"Failed to connect to database: {err}")
-        raise
-@app.post('/cadastro/')
-async def cadastro(user: User):
-    try:
-        connection = connect_database()
-        cursor = connection.cursor()
-        query = f"SELECT * FROM usuarios WHERE nome='{user.nome}'"
-        cursor.execute(query)
-        result = cursor.fetchall()
-        print('Resultados: ', result)
-        if len(result) == 0:
-            values = (user.nome, user.telefone, user.nascimento, user.email, user.senha, user.usina, user.id_usina, user.privilegios)
-            query = f"INSERT INTO usuarios (nome, telefone, nascimento, email, senha, usina, id_usina, privilegios) VALUES {values}"
-            cursor.execute(query)
-            connection.commit()
-            return {'status': 'Usuário cadastrado com sucesso.'}
-        else:
-            print('Usuário já cadastrado.')
-            return {'status': 'Usuário já cadastrado.'}
-    except mysql.connector.Error as err:
-        print(f"Failed to connect to database: {err}")
-        raise
-    finally:
-        if 'cursor' in locals() and cursor:
-            cursor.close()
-        if 'connection' in locals() and connection:
-            connection.close()
 
-if __name__ == '__main__':
+def run_uvicorn():
     import uvicorn
-    uvicorn.run("main:app", host=bind_address, port=8000, log_level="info")
-    # hypercorn main:app --bind "[::]:$PORT"
-    # uvicorn.run(app, host='localhost', port=8000)
+    uvicorn.run("main:app", host='0.0.0.0', port=8000, log_level="info")
+
+if __name__ == "__main__":
+    teste = True
+    if teste:
+        # Inicialize o servidor FastAPI em um novo processo
+        server_process = Process(target=run_uvicorn)
+        server_process.start()
+
+        # Espere um pouco para garantir que o servidor esteja em execução
+        import time
+        time.sleep(2)
+
+        # Inicialize a função de teste em um novo processo
+        test_process = Process(target=test_api)
+        test_process.start()
+
+        # Junte os processos para esperar que eles terminem
+        test_process.join()
+        server_process.terminate()
+        server_process.join()
+    else:
+        import uvicorn
+        uvicorn.run("main:app", host='0.0.0.0', port=8000, log_level="info")
+
+
+
+# if __name__ == '__main__':
+#     import uvicorn
+#     uvicorn.run("main:app", host='0.0.0.0', port=8000, log_level="info")
+
 
 '''
+Como posso modelar a estrutura das pastas e classes para a api?
+
 A api necessita das seguintes funções:
 
 # Usuário
@@ -189,6 +159,14 @@ A api necessita das seguintes funções:
         ### 3.11 Função que faz a consulta o último valor acumulado para todas as UGs
         
     ## 4. Sistema de resposta para o aplicativo
-        
+        ### 4.1 Função que retorna o json padrão para o aplicativo
+        ### 4.2 Função que valida os dados
+        ### 4.3 Função que formata os dados
+
+# Visualização dos dados
+    ## 1. Sistema de visualização dos dados
+        ### 1.1 Função que requisita os dados da usina
+        ### 1.2 Função que gerar os gráficos
+        ### 1.3 Função que organiza os gráficos nos templates
 
 '''
