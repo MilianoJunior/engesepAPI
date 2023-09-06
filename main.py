@@ -29,6 +29,9 @@ Função que se conecta ao banco de dados.
 '''
 Sistema de autenticação
 '''
+for route in app.routes:
+    print(route.methods, route.path, route.name)
+    print('------------------------')
 '''Testes unitários'''
 def test_api():
     import requests
@@ -80,7 +83,7 @@ def run_uvicorn():
     uvicorn.run("main:app", host='0.0.0.0', port=8000, log_level="info")
 
 if __name__ == "__main__":
-    teste = True
+    teste = False
     if teste:
         # Inicialize o servidor FastAPI em um novo processo
         server_process = Process(target=run_uvicorn)
