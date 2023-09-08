@@ -15,32 +15,20 @@ variaveis = {
               'telefone':None,
               'nascimento': None,
               'email':None,
-              'senha':None,
-              'imagem': None,
               'usina': None,
               'usina_id':None,
-              'status' : None,
-              'ultimo_acesso' : None,
-              'numero_acessos': None,
-              'acessos_consecutivos': None,
-              'created_at':None,
-              'updated_at': None
+              'privilegios' : None,
     },
     'usina':{
                 'usina_info': {
                                 'id':None,
                                 'nome': None,
-                                'local': None,
-                                'cidade': None,
+                                'localizacao': None,
                                 'numero_de_turbinas': None,
                                 'potencia':None,
-                                'nome_tabela': None,
-                                'inicio_funcionamento': None,
-                                'created_at':None,
-                                'updated_at': None
-
+                                'nome_tabela': None
                 },
-                'usina_dados':[],
-
+                'usina_dados':turbina,
     }
 }
+

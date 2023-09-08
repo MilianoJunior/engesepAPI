@@ -22,16 +22,16 @@ print('Classe Auth registrada no app com sucesso.')
 app.post('/login/')(auth.authenticate)  # registro a função login no app
 
 '''Sistema de rotas por token'''
-# app.post('/token/')(auth.token)  # registro a função token no app
+app.post('/dados/')(auth.dados)  # verifica se o token é válido e retorna os dados
 '''
 Função que se conecta ao banco de dados.
 '''
 '''
 Sistema de autenticação
 '''
-for route in app.routes:
-    print(route.methods, route.path, route.name)
-    print('------------------------')
+# for route in app.routes:
+#     print(route.methods, route.path, route.name)
+#     print('------------------------')
 '''Testes unitários'''
 def test_api():
     import requests
@@ -41,13 +41,29 @@ def test_api():
     print('\nTestes unitários\n')
     print('------------------------')
     cont = 0
-    def print_teste(var,response, cont=cont):
+    def print_teste(var,response,cont=cont):
         cont += 1
         teste = "True" if response.json()['status'] == var else "Erro"
         if teste == "Erro":
             print(response.json())
         print(cont, teste + ' - ' + var)
         print('-------------------------------------------------')
+        return cont
+
+    def recursive_attributes(dados, depth=0, max_depth=3):
+        # Limit recursion depth to avoid infinite loops
+        if depth > max_depth:
+            return
+        # Loop through each attribute
+        for key, value in dados.items():
+            try:
+                print("  " * depth + f"{key}")
+                if isinstance(value, dict):
+                    recursive_attributes(value, depth + 1, max_depth)
+                else:
+                    print("  " * depth + f"{value}: {type(value)}")
+            except Exception as e:
+                print("  " * depth + f"Error getting {value}: {e}")
 
     # Test Login
     url = 'http://127.0.0.1:8000/login/'
@@ -59,7 +75,7 @@ def test_api():
     response = requests.post(url, data=json.dumps(body), headers=headers)
     # login com sucesso
     var = 'Usuário autenticado com sucesso.'
-    print_teste(var,response)
+    cont = print_teste(var,response, cont)
     # login com falha no usuário
     body = {
             "email": "milianojunior39@g",
@@ -67,7 +83,7 @@ def test_api():
         }
     response = requests.post(url, data=json.dumps(body), headers=headers)
     var = 'Usuário não encontrado.'
-    print_teste(var,response)
+    cont = print_teste(var,response,cont)
     # login com falha na senha
     body = {
             "email": "milianojunior39@gmail.com",
@@ -75,7 +91,41 @@ def test_api():
         }
     response = requests.post(url, data=json.dumps(body), headers=headers)
     var = 'Senha incorreta.'
-    print_teste(var,response)
+    cont = print_teste(var,response,cont)
+    # verifica se o token é válido e retorna os dados
+    url = 'http://127.0.0.1:8000/dados/'
+    body = {
+            "token":'eec330f9a0e0b58adb00f1beaedc0274'
+        }
+    var = 'Token não encontrado.'
+    response = requests.post(url, data=json.dumps(body), headers=headers)
+    cont = print_teste(var,response,cont)
+    # verifica se o token é válido e retorna os dados
+    body = {
+            "token":'eec330f9a0e0b58adb00f1beaedc02c7' # token inválido
+        }
+    var = 'Token inativo.'
+    response = requests.post(url, data=json.dumps(body), headers=headers)
+    cont=print_teste(var,response,cont)
+    # verifica se o token é válido e retorna os dados
+    body = {
+            "token":'88a9630abfd7e99b21daa739757cc30e' # token válido
+        }
+    var = 'Token válido.'
+    response = requests.post(url, data=json.dumps(body), headers=headers)
+    cont = print_teste(var,response,cont)
+    # verifica se os dados estão corretos
+    # print(response.json()['data'])
+    recursive_attributes(response.json()['data'])
+    # for key, value in response.json()['data'].items():
+    #     if isinstance(value, dict):
+    #         print(key)
+    #         for k, val in value.items():
+    #             print('  ',k, val)
+    #     else:
+    #         print(key, value)
+
+
 
 
 def run_uvicorn():
@@ -171,5 +221,17 @@ A api necessita das seguintes funções:
         ### 1.1 Função que requisita os dados da usina
         ### 1.2 Função que gerar os gráficos
         ### 1.3 Função que organiza os gráficos nos templates
+
+'''
+
+'''
+Meta de hoje: TERMINAR A API DA ENGESEP
+
+Preciso terminar hoje, a construção da api da EngeSep.
+Estou no seguinte ponto:
+    - Rota de login por senha e email concluída e testada na máquina local e no servidor.
+    - Rota de verificação de token concluída e testada na máquina local e no servidor.
+Falta:
+    - Retornar os dados no formato json para o aplicativo.
 
 '''

@@ -2,17 +2,27 @@
 import hashlib
 import secrets
 import datetime
+import time
 from pydantic import BaseModel
 from fastapi import Request
 from api.db.connection import Database
 from api.usuario.dados.profile import Profile
+from api.usuario.dados.variaveis import variaveis
+from api.usina.tabela.usinas import Usinas
 
 db = Database()
 class User(BaseModel):
     email: str
     password: str
 
+class Token(BaseModel):
+    token: str
 
+class Usina(BaseModel):
+    nome: str
+    numero_turbinas: int
+    localizacao: str
+    potencia_instalada: float
 class BasicAuth:
 
     @staticmethod
@@ -37,39 +47,11 @@ class AuthenticationManager:
 
     def __init__(self):
         self.db = db
+        self.variaveis = variaveis
+        self.usinas = Usinas(self.db)
 
-    def recursive_attributes(self, obj, depth=0, max_depth=3):
-        """
-        Prints all attributes and methods of an object recursively up to max_depth.
-
-        :param obj: The object to inspect.
-        :param depth: Current recursion depth. Used for indentation.
-        :param max_depth: Maximum recursion depth to prevent infinite loops.
-        """
-        # Limit recursion depth to avoid infinite loops
-        if depth > max_depth:
-            return
-
-        # Get a list of all attributes and methods of the object
-        attributes = dir(obj)
-
-        # Loop through each attribute
-        for attr in attributes:
-            try:
-                # Get the value of the attribute
-                attr_value = getattr(obj, attr)
-                print("  " * depth + f"{attr}: {type(attr_value)}")
-
-                # If the attribute is an object or a method, inspect its attributes recursively
-                if hasattr(attr_value, "__dict__"):
-                    recursive_attributes(attr_value, depth + 1, max_depth)
-            except Exception as e:
-                print("  " * depth + f"Error getting {attr}: {e}")
     def authenticate(self, user: User, request: Request) -> dict:
         try:
-            # self.recursive_attributes(request)
-            # client_ip = request.client.host
-            # print('IP do cliente: ', client_ip)
             userd = Profile(self.db).get_profile(user.email)
             if not userd:
                 return {'status': 'Usuário não encontrado.'}
@@ -94,77 +76,92 @@ class AuthenticationManager:
             print(f"Failed to register token : {err}")
             raise HTTPException(status_code=401, detail="Falha no registro do token.")
 
+    def verify_token(self, token: Token) -> dict:
+        if not self.verify_token_exists(token.token):
+            return {'status': 'Token não encontrado.', 'data': None}
+        if not self.verify_token_expired(token.token):
+            return {'status': 'Token inativo.', 'data': None}
+        user_id = self.get_user_token(token.token)
+        return {'status': 'Token válido.', 'data': user_id}
+
     def verify_token_exists(self, token: str) -> bool:
         query = f"SELECT token FROM Tokens WHERE token='{token}'"
         result = self.db.fetch_all(query)
         return bool(result)
 
-    def verify_token_active(self, token: str) -> bool:
-        query = f"SELECT status FROM Tokens WHERE token='{token}'"
-        result = self.db.fetch_all(query)
-        if result:
-            return result[0]["status"] == "active"
-        return False
-
     def verify_token_expired(self, token: str) -> bool:
         query = f"SELECT expiration_time FROM Tokens WHERE token='{token}'"
         result = self.db.fetch_all(query)
         if result:
-            expiration_time = result[0]["expiration_time"]
-            return datetime.datetime.now() > expiration_time
+            expiration_time = result[0][0]
+            print('Tempo de expiração: ', expiration_time, datetime.datetime.now())
+            if datetime.datetime.now() > expiration_time:
+                return False
         return True
 
-    def verify_token_blocked(self, token: str) -> bool:
-        query = f"SELECT status FROM Tokens WHERE token='{token}'"
+    def dados(self, token: Token) -> dict:
+        "Faz a autenticação do token e retorna os dados do usuário."
+        authentication = self.verify_token(token)
+        if authentication['status'] != 'Token válido.':
+            return authentication
+        # início do preenchimento das variáveis
+        user_id = authentication['data']
+        # preenche as variáveis com os dados do token
+        variaveis['token'] = token.token
+        # preenche as variáveis com os dados do usuário
+        self.get_user(user_id)
+        # preenche as variáveis com os dados da usina
+        self.get_usina(self.variaveis['user']['usina_id'])
+        # preenche as variáveis com os dados das turbinas
+        return {'status': 'Token válido.', 'data': self.variaveis}
+
+    def get_user_token(self, token: str) -> str:
+        query = f"SELECT userid FROM Tokens WHERE token='{token}'"
         result = self.db.fetch_all(query)
         if result:
-            return result[0]["status"] == "blocked"
-        return False
+            return result[0][0]
+        return None
+
+    def get_user(self, user_id: str) -> None:
+        query = f"SELECT * FROM usuarios WHERE id='{user_id}'"
+        result = self.db.fetch_all(query)
+        print('Usuário: ', result)
+        if result:
+            self.variaveis['user']['id'] = result[0][0]
+            self.variaveis['user']['nome'] = result[0][1]
+            self.variaveis['user']['telefone'] = result[0][2]
+            self.variaveis['user']['nascimento'] = result[0][3]
+            self.variaveis['user']['email'] = result[0][4]
+            self.variaveis['user']['usina'] = result[0][6]
+            self.variaveis['user']['usina_id'] = result[0][7]
+            self.variaveis['user']['privilegios'] = result[0][8]
+    def get_usina(self, usina_id: int)->None:
+        result = self.usinas.get_usina_id(usina_id)
+        print('Usina: ', result)
+        if result:
+            self.variaveis['usina']['usina_info']['id'] = result[0][0]
+            self.variaveis['usina']['usina_info']['nome'] = result[0][1]
+            self.variaveis['usina']['usina_info']['localizacao'] = result[0][3]
+            self.variaveis['usina']['usina_info']['numero_de_turbinas'] = result[0][2]
+            self.variaveis['usina']['usina_info']['potencia'] = result[0][4]
+            self.variaveis['usina']['usina_info']['nome_tabela'] = self.variaveis['user']['usina']
+
+    def get_usina_dados(self, nome_tabela: int)->None:
+        ''' Função de consulta de usinas '''
+        pass
 
 
-# Testing our AuthenticationManager
-def test_authentication_manager():
-    manager = AuthenticationManager()
+    def create_usinas_test(self):
+        us = Usinas(self.db)
+        usina = Usina(nome='CGH Maria da Luz', numero_turbinas=1, localizacao='Abelardo do Luz - SC, 89830-000', potencia_instalada=0.1)
+        us.create_usina(usina)
+        usina = Usina(nome='CGH Granada', numero_turbinas=2, localizacao='Romelândia - SC, 89908-000', potencia_instalada=3.0)
+        us.create_usina(usina)
 
-    # Mock a successful authentication
-    token = manager.authenticate("milianojunior39@gmail.com", "123456")
-    print('Token gerado: ', token)
-    # assert token, "Token generation failed"
-    #
-    # # Test token verifications
-    # assert manager.verify_token_exists(token), "Token existence verification failed"
-    # assert manager.verify_token_active(token), "Token active verification failed"
-    # assert not manager.verify_token_expired(token), "Token expiration verification failed"
-    # assert not manager.verify_token_blocked(token), "Token blocked verification failed"
 
-    return "All tests passed!"
 
-if __name__ == "__main__":
-    print(test_authentication_manager())
 
-# Testando novamente
-# def test_classes_final_fixed():
-#     # Testando BasicAuth
-#     basic_auth = BasicAuth()
-#
-#     # Simulando uma senha armazenada
-#     stored_password = basic_auth.hash_password("password123")
-#
-#     # Método de autenticação modificado para aceitar uma senha armazenada como argumento
-#     def authenticate_with_stored_password(stored_password: str, username: str, password: str) -> bool:
-#         return basic_auth.verify_password(stored_password, password)
-#
-#     assert authenticate_with_stored_password(stored_password, "user", "password123"), "Falha na autenticação correta"
-#     assert not authenticate_with_stored_password(stored_password, "user",
-#                                                  "wrongpassword"), "Autenticação bem-sucedida com senha errada"
-#
-#     # Testando TokenAuth
-#     token_auth = TokenAuth()
-#     token = token_auth.generate_token()
-#     token_auth.store_token(1, token)
-#     assert token_auth.authenticate(token), "Falha na autenticação com token"
-#
-#     return "Testes concluídos com sucesso!"
+
 
 
 
