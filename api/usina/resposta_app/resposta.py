@@ -9,8 +9,8 @@ class Response:
 
     def __init__(self, db, table):
         self.db = db.connection
-        # self.table = table
-        self.table = 'cgh_fae'
+        self.table = table
+        # self.table = 'cgh_fae'
         self.divisores ={
             'cgh_parisoto': {'energia': 1, 'agua': 1},
             'cgh_maria_luz': {'energia': 1000, 'agua': 100},
