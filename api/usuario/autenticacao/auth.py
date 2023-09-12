@@ -9,8 +9,8 @@ from api.db.connection import Database
 from api.usuario.dados.profile import Profile
 from api.usuario.dados.variaveis import variaveis
 from api.usina.tabela.usinas import Usinas
+from api.usina.resposta_app.resposta import Response
 
-db = Database()
 class User(BaseModel):
     email: str
     password: str
@@ -43,10 +43,10 @@ class BasicAuth:
 
 
 class AuthenticationManager:
-    TOKEN_EXPIRATION_TIME = datetime.timedelta(hours=1)  # 1 hour token expiration for this example
+    TOKEN_EXPIRATION_TIME = datetime.timedelta(hours=6)  # 1 hour token expiration for this example
 
     def __init__(self):
-        self.db = db
+        self.db = Database()
         self.variaveis = variaveis
         self.usinas = Usinas(self.db)
 
@@ -73,7 +73,6 @@ class AuthenticationManager:
             query = f"INSERT INTO Tokens (Userid, token, expiration_time) VALUES ('{user_id}','{token}','{expiration_time}')"
             self.db.execute_query(query)
         except Exception as err:
-            print(f"Failed to register token : {err}")
             raise HTTPException(status_code=401, detail="Falha no registro do token.")
 
     def verify_token(self, token: Token) -> dict:
@@ -99,9 +98,27 @@ class AuthenticationManager:
                 return False
         return True
 
-    def dados(self, token: Token) -> dict:
+    def data(self, token: Token) -> dict:
+        def recursive_attributes(dados, depth=0, max_depth=30):
+            # Limit recursion depth to avoid infinite loops
+            if depth > max_depth:
+                return
+            # Loop through each attribute
+            for key, value in dados.items():
+                try:
+                    if isinstance(value, dict):
+                        print("--" * depth + f"{key}")
+                        recursive_attributes(value, depth + 1, max_depth)
+                    else:
+                        print("  " * depth + f"{key}: {value} , {type(key)}: {type(value)}")
+                except Exception as e:
+                    print("  " * depth + f"Error getting {value}: {e}")
         "Faz a autenticação do token e retorna os dados do usuário."
+        inicio = time.time()
         authentication = self.verify_token(token)
+        print('########################################################################')
+        print('1 - Tempo de verificação do token: ', time.time() - inicio)
+        print('########################################################################')
         if authentication['status'] != 'Token válido.':
             return authentication
         # início do preenchimento das variáveis
@@ -110,9 +127,22 @@ class AuthenticationManager:
         variaveis['token'] = token.token
         # preenche as variáveis com os dados do usuário
         self.get_user(user_id)
+        print('########################################################################')
+        print('2 - Tempo de verificação do Usuário: ', time.time() - inicio)
+        print('########################################################################')
         # preenche as variáveis com os dados da usina
         self.get_usina(self.variaveis['user']['usina_id'])
         # preenche as variáveis com os dados das turbinas
+        print('########################################################################')
+        print('3 - Tempo de busca de dados da usina: ', time.time() - inicio)
+        print('########################################################################')
+        self.get_usina_dados(self.variaveis['user']['usina'])
+        print('########################################################################')
+        print('4 - Tempo de busca de dados processados: ', time.time() - inicio)
+        print('########################################################################')
+        # time.sleep(3)
+        # print('Variáveis: ', self.variaveis)
+        # recursive_attributes(self.variaveis)
         return {'status': 'Token válido.', 'data': self.variaveis}
 
     def get_user_token(self, token: str) -> str:
@@ -148,8 +178,15 @@ class AuthenticationManager:
 
     def get_usina_dados(self, nome_tabela: int)->None:
         ''' Função de consulta de usinas '''
-        pass
-
+        try:
+            response = Response(self.db, nome_tabela)
+            result = response.get_data_app()
+            print('Dados da usina: ', result)
+            if result:
+                self.variaveis['usina']['usina_dados'] = result
+        except Exception as err:
+            print(f"Failed to connect to database: {err}")
+            raise
 
     def create_usinas_test(self):
         us = Usinas(self.db)

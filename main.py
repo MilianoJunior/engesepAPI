@@ -7,6 +7,7 @@ from fastapi import FastAPI
 import mysql.connector
 import pandas as pd
 import os
+import time
 
 # minhas classes
 from api.usuario.autenticacao.auth import AuthenticationManager
@@ -20,9 +21,11 @@ app = FastAPI()
 auth = AuthenticationManager()  # registro a classe Auth no app
 print('Classe Auth registrada no app com sucesso.')
 app.post('/login/')(auth.authenticate)  # registro a função login no app
+# print('Classe Auth registrada no app com sucesso.')
+# app.post('/login/')(auth.authenticate)  # registro a função login no app
 
 '''Sistema de rotas por token'''
-app.post('/dados/')(auth.dados)  # verifica se o token é válido e retorna os dados
+app.post('/data/')(auth.data)  # verifica se o token é válido e retorna os dados
 '''
 Função que se conecta ao banco de dados.
 '''
@@ -57,66 +60,73 @@ def test_api():
         # Loop through each attribute
         for key, value in dados.items():
             try:
-                print("  " * depth + f"{key}")
                 if isinstance(value, dict):
+                    print("  " * depth + f"{key}")
                     recursive_attributes(value, depth + 1, max_depth)
                 else:
-                    print("  " * depth + f"{value}: {type(value)}")
+                    print("  " * depth + f"{key}: {value}")
             except Exception as e:
                 print("  " * depth + f"Error getting {value}: {e}")
 
     # Test Login
-    url = 'http://127.0.0.1:8000/login/'
+    # url = 'http://127.0.0.1:8000/login/'
+    # body = {
+    #         "email": "milianojunior39@gmail.com",
+    #         "password": "123456"
+    #     }
+    # headers = {'Content-type': 'application/json'}
+    # response = requests.post(url, data=json.dumps(body), headers=headers)
+    # # # login com sucesso
+    # var = 'Usuário autenticado com sucesso.'
+    # cont = print_teste(var,response, cont)
+    # login com falha no usuário
+    # body = {
+    #         "email": "milianojunior39@g",
+    #         "password": "123456"
+    #     }
+    # response = requests.post(url, data=json.dumps(body), headers=headers)
+    # var = 'Usuário não encontrado.'
+    # cont = print_teste(var,response,cont)
+    # # login com falha na senha
+    # body = {
+    #         "email": "milianojunior39@gmail.com",
+    #         "password": "1234567"
+    #     }
+    # response = requests.post(url, data=json.dumps(body), headers=headers)
+    # var = 'Senha incorreta.'
+    # cont = print_teste(var,response,cont)
+    # # verifica se o token é válido e retorna os dados
+    url = 'http://127.0.0.1:8000/data/'
+    # body = {
+    #         "token":'eec330f9a0e0b58adb00f1beaedc0274'
+    #     }
+    # var = 'Token não encontrado.'
+    # response = requests.post(url, data=json.dumps(body), headers=headers)
+    # cont = print_teste(var,response,cont)
+    # # verifica se o token é válido e retorna os dados
+    # body = {
+    #         "token":'eec330f9a0e0b58adb00f1beaedc02c7' # token inválido
+    #     }
+    # var = 'Token inativo.'
+    # response = requests.post(url, data=json.dumps(body), headers=headers)
+    # cont=print_teste(var,response,cont)
+    # verifica se o token é válido e retorna os dados
     body = {
-            "email": "milianojunior39@gmail.com",
-            "password": "123456"
+            "token":'5218786db77b373cb8c69db26b47f00f' # token válido
         }
     headers = {'Content-type': 'application/json'}
-    response = requests.post(url, data=json.dumps(body), headers=headers)
-    # login com sucesso
-    var = 'Usuário autenticado com sucesso.'
-    cont = print_teste(var,response, cont)
-    # login com falha no usuário
-    body = {
-            "email": "milianojunior39@g",
-            "password": "123456"
-        }
-    response = requests.post(url, data=json.dumps(body), headers=headers)
-    var = 'Usuário não encontrado.'
-    cont = print_teste(var,response,cont)
-    # login com falha na senha
-    body = {
-            "email": "milianojunior39@gmail.com",
-            "password": "1234567"
-        }
-    response = requests.post(url, data=json.dumps(body), headers=headers)
-    var = 'Senha incorreta.'
-    cont = print_teste(var,response,cont)
-    # verifica se o token é válido e retorna os dados
-    url = 'http://127.0.0.1:8000/dados/'
-    body = {
-            "token":'eec330f9a0e0b58adb00f1beaedc0274'
-        }
-    var = 'Token não encontrado.'
-    response = requests.post(url, data=json.dumps(body), headers=headers)
-    cont = print_teste(var,response,cont)
-    # verifica se o token é válido e retorna os dados
-    body = {
-            "token":'eec330f9a0e0b58adb00f1beaedc02c7' # token inválido
-        }
-    var = 'Token inativo.'
-    response = requests.post(url, data=json.dumps(body), headers=headers)
-    cont=print_teste(var,response,cont)
-    # verifica se o token é válido e retorna os dados
-    body = {
-            "token":'88a9630abfd7e99b21daa739757cc30e' # token válido
-        }
     var = 'Token válido.'
     response = requests.post(url, data=json.dumps(body), headers=headers)
-    cont = print_teste(var,response,cont)
-    # verifica se os dados estão corretos
-    # print(response.json()['data'])
-    recursive_attributes(response.json()['data'])
+    if response.status_code == 200:
+        print('Dados consultados com sucesso!')
+        print(response.json())
+        print(type(response))
+        # time.sleep(2)
+        print('-------------------------------------------------')
+        cont = print_teste(var,response,cont)
+        # # verifica se os dados estão corretos
+        # # print(response.json()['data'])
+        # recursive_attributes(response.json()['data'])
     # for key, value in response.json()['data'].items():
     #     if isinstance(value, dict):
     #         print(key)
@@ -124,9 +134,6 @@ def test_api():
     #             print('  ',k, val)
     #     else:
     #         print(key, value)
-
-
-
 
 def run_uvicorn():
     import uvicorn

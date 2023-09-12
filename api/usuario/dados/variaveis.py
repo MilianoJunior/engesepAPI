@@ -1,12 +1,12 @@
-turbina = {
-                'status_ativacao': None,
-                'nome_turbina': None,
-                'data': None,
-                'energia_acumulada': None,
-                'geracao_mensal': None,
-                'geracao_diaria': None,
-                'ultimos':None,
-}
+# turbina = {
+#                 'status_ativacao': None,
+#                 'nome_turbina': None,
+#                 'data': None,
+#                 'energia_acumulada': None,
+#                 'geracao_mensal': None,
+#                 'geracao_diaria': None,
+#                 'ultimos':None,
+# }
 variaveis = {
     'token':'',
     'user':{
@@ -28,7 +28,7 @@ variaveis = {
                                 'potencia':None,
                                 'nome_tabela': None
                 },
-                'usina_dados':turbina,
+                'usina_dados': None,
     }
 }
 

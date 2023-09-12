@@ -56,6 +56,16 @@ class Profile:
 
         print(f"Password for {email} stored successfully!")
 
+    def create_profile(self, user):
+        ''' Função de cadastro de usuário '''
+        try:
+            query = f"INSERT INTO usuarios (nome, telefone, nascimento, email, senha, usina, id_usina, privilegios) VALUES ('{user.nome}', '{user.telefone}', '{user.nascimento}', '{user.email}', '{user.senha}', '{user.usina}', '{user.id_usina}', '{user.privilegios}')"
+            self.db.execute_query(query)
+            return {'status': 'Usuário cadastrado com sucesso.'}
+        except Exception as err:
+            print(f"Failed to connect to database: {err}")
+            raise
+
     # async def update_profile(self, user):
     #     ''' Função de alteração de dados do usuário '''
     #     try:
