@@ -19,8 +19,6 @@ class Response:
         self.ugs = {}
     def get_periodo(self, data_inicio, data_final, periodo):
         select_col = self.get_columns()
-        print('\n -----------------')
-        print('Get mensal')
         if any([val is None for val in select_col.values()]):
             cols = ','.join(select_col.keys())
         else:
@@ -39,8 +37,6 @@ class Response:
                 nome = key_a.pop(0)
                 self.ugs[nome] = {}
                 self.ugs[nome]['geracao'] = self.prod_energia(df_consulta, column, periodo)
-
-        print(self.ugs)
         return self.ugs
     def get_data_app(self):
         select_col = self.get_columns()
@@ -185,7 +181,6 @@ class Response:
                         selecao[value] = key
             return selecao
         except mysql.connector.Error as err:
-            print(f"Failed to get data: {err}")
             raise Exception(f"Falha nos calculos de geração de energia: {e}")
 
     def reverse_rename(self, abbr):
@@ -274,20 +269,3 @@ class Response:
         except Exception as e:
             raise Exception(f"Falha na decodificacao do nome da tabela: {e}")
 
-'''      
-  usina_dados
-    status_ativacao
-    None: <class 'NoneType'>
-    nome_turbina
-    None: <class 'NoneType'>
-    data
-    None: <class 'NoneType'>
-    energia_acumulada
-    None: <class 'NoneType'>
-    geracao_mensal
-    None: <class 'NoneType'>
-    geracao_diaria
-    None: <class 'NoneType'>
-    ultimos
-    None: <class 'NoneType'>
-'''

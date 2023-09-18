@@ -8,45 +8,41 @@ class Profile:
         self.name = name
         self.db = db
 
-
     def get_profile_id(self, id):
         ''' Função de consulta de usuário '''
         try:
-            query = f"SELECT * FROM usuarios WHERE id='{id}'"
-            result = self.db.fetch_all(query)
-            if len(result) == 0:
-                return False
-            else:
-                return result
+            query = "SELECT * FROM usuarios WHERE id=%s"
+            result = self.db.fetch_all(query, (id,))
+            return result if result else False
         except Exception as err:
-            raise Exception(f"Failed get profile line 48: {err}")
+            raise Exception(f"Failed get profile: {err}")
 
     def get_profile(self, email):
         ''' Função de consulta de usuário '''
         try:
-            query = f"SELECT * FROM usuarios WHERE email='{email}'"
-            result = self.db.fetch_all(query)
-            if len(result) == 0:
-                return False
-            else:
-                return result
+            query = "SELECT * FROM usuarios WHERE email=%s"
+            result = self.db.fetch_all(query, (email,))
+            return result if result else False
         except Exception as err:
-            raise Exception(f"Failed get profile line 48: {err}")
+            raise Exception(f"Failed get profile: {err}")
 
     def modify_password(self, email: str, password: str):
         ''' Função de alteração de senha '''
         try:
-            query = update = f"UPDATE usuarios SET senha='{password}' WHERE email='{email}'"
-            self.db.execute_query(query)
+            query = "UPDATE usuarios SET senha=%s WHERE email=%s"
+            self.db.execute_query(query, (password, email))
             return {'status': 'Senha alterada com sucesso.'}
         except Exception as err:
-            raise Exception(f"Failed modify password line 57: {err}")
+            raise Exception(f"Failed modify password: {err}")
+
     def create_profile(self, user):
         ''' Função de cadastro de usuário '''
         try:
-            query = f"INSERT INTO usuarios (nome, telefone, nascimento, email, senha, usina, id_usina, privilegios) VALUES ('{user.nome}', '{user.telefone}', '{user.nascimento}', '{user.email}', '{user.password}', '{user.usina}', '{user.id_usina}', '{user.privilegios}')"
-            self.db.execute_query(query)
+            query = "INSERT INTO usuarios (nome, telefone, nascimento, email, senha, usina, id_usina, privilegios) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
+            params = (user.nome, user.telefone, user.nascimento, user.email, user.password, user.usina, user.id_usina, user.privilegios)
+            self.db.execute_query(query, params)
             return {'status': 'Usuário cadastrado com sucesso.'}
         except Exception as err:
-            raise Exception(f"Failed create profile line 66: {err}")
+            raise Exception(f"Failed create profile: {err}")
+
 

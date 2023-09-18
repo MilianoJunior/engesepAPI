@@ -39,6 +39,11 @@ def test_api():
         'mensal': True,
         'logout': True,
     }
+    on = False
+    if on:
+        url = 'https://fastapi-production-8d7e.up.railway.app/rota/'
+    else:
+        url = 'http://127.0.0.1:8000/rota/'
     cont = 0
     def print_teste(var,response,cont=cont):
         cont += 1
@@ -69,7 +74,7 @@ def test_api():
         print('Test Login')
         print('------------------------')
 
-        url = 'http://127.0.0.1:8000/login/'
+        url = url.replace('rota', 'login')
         body = {
                 "email": "milianojunior39@gmail.com",
                 "password": "123456"
@@ -101,7 +106,7 @@ def test_api():
         print('------------------------')
         print('Test Cadastro')
         print('------------------------')
-        url = 'http://127.0.0.1:8000/cadastro/'
+        url = url.replace('login', 'cadastro')
         body = {
             "email": "leonardo@gmail.com",
             "password": "123456",
@@ -158,7 +163,7 @@ def test_api():
         print('Test Token')
         print('------------------------')
         # verifica se o token é válido e retorna os dados
-        url = 'http://127.0.0.1:8000/data/'
+        url = url.replace('cadastro', 'data')
         body = {
                 "token":'eec330f9a0e0b58adb00f1beaedc0274'
             }
@@ -186,7 +191,7 @@ def test_api():
         print('------------------------')
         print('Test consulta Diária e Mensal')
         print('------------------------')
-        url = 'http://127.0.0.1:8000/periodo/'
+        url = url.replace('data', 'periodo')
         body = {
             "periodo": "D",
             "data_inicio": "2023-01-01",
@@ -198,7 +203,6 @@ def test_api():
         cont = print_teste(var, response, cont)
         if response.status_code == 200:
             recursive_attributes(response.json()['data'])
-        url = 'http://127.0.0.1:8000/periodo/'
         body = {
             "periodo": "M",
             "data_inicio": "2023-01-01",
@@ -215,7 +219,7 @@ def test_api():
         print('------------------------')
         print('Test Logout')
         print('------------------------')
-        url = 'http://127.0.0.1:8000/logout/'
+        url = url.replace('periodo', 'logout')
         body = {
             "token": token_valido  # token válido
         }
@@ -223,7 +227,7 @@ def test_api():
         var = 'Usuário deslogado com sucesso.'
         cont = print_teste(var, response, cont)
         # teste de login com token desativado
-        url = 'http://127.0.0.1:8000/data/'
+        url = url.replace('logout', 'data')
         response = requests.post(url, data=json.dumps(body), headers=headers)
         var = 'Token não encontrado.'
         cont = print_teste(var, response, cont)
@@ -327,21 +331,5 @@ A api necessita das seguintes funções:
 '''
 
 '''
-Meta de hoje: TERMINAR A API DA ENGESEP
 
-Preciso terminar hoje, a construção da api da EngeSep.
-Estou no seguinte ponto:
-    - Rota de login por senha e email concluída e testada na máquina local e no servidor.
-    - Rota de verificação de token concluída e testada na máquina local e no servidor.
-Falta:
-    - Retornar os dados no formato json para o aplicativo.
-
-netflix = 39.90
-youtube = 24.90
-tim_junior = 87.70
-vivo_leti = 57.00
-
-total = 209.50
-
-39.90 + 24.90 + 87.70 + 57.00 = 209.50 
 '''
