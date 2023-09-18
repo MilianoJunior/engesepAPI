@@ -33,19 +33,26 @@ class Database:
             print(f"Erro ao conectar ao banco de dados: {e}")
             return None
 
-    def execute_query(self, query):
+    def execute_query(self, query, params=None):
         cursor = self.connection.cursor(buffered=True)  # Use a buffered cursor
         try:
-            cursor.execute(query)
+            if not params is None:
+                cursor.execute(query, params)
+            else:
+                cursor.execute(query)
             self.connection.commit()
             return cursor
         except Error as e:
             print(f"Erro ao executar a query: {e}")
             return None
 
-    def fetch_all(self, query):
-        cursor = self.execute_query(query)
-        return cursor.fetchall()
+    def fetch_all(self, query, params=None):
+        try:
+            cursor = self.execute_query(query, params)
+            return cursor.fetchall()
+        except Error as e:
+            print(f"Erro ao executar a query fetch_all: {e}")
+            return None
 
     def close_connection(self):
         if self.connection.is_connected():

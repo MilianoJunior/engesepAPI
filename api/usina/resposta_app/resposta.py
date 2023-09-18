@@ -10,7 +10,6 @@ class Response:
     def __init__(self, db, table):
         self.db = db.connection
         self.table = table
-        # self.table = 'cgh_fae'
         self.divisores ={
             'cgh_parisoto': {'energia': 1, 'agua': 1},
             'cgh_maria_luz': {'energia': 1000, 'agua': 100},
@@ -18,16 +17,38 @@ class Response:
             'cgh_granada': {'energia': 1000, 'agua': 100},
         }
         self.ugs = {}
+    def get_periodo(self, data_inicio, data_final, periodo):
+        select_col = self.get_columns()
+        print('\n -----------------')
+        print('Get mensal')
+        if any([val is None for val in select_col.values()]):
+            cols = ','.join(select_col.keys())
+        else:
+            cols = ','.join(select_col.values())
+        columns = select_col.keys()
+        cols += ',data_hora'
+        columns = list(columns) + ['data_hora']
+        df_consulta = self.consulta_geracao(cols, data_inicio, data_final)
+        df_consulta.columns = columns
+        df_consulta = self.filtro_divisores(df_consulta)
+        df_consulta['data_hora'] = pd.to_datetime(df_consulta['data_hora'])
+        df_consulta = df_consulta.set_index('data_hora')
+        for column in df_consulta.columns:
+            if 'energia' in column:
+                key_a = column.split('_')
+                nome = key_a.pop(0)
+                self.ugs[nome] = {}
+                self.ugs[nome]['geracao'] = self.prod_energia(df_consulta, column, periodo)
+
+        print(self.ugs)
+        return self.ugs
     def get_data_app(self):
         select_col = self.get_columns()
         data_final = datetime.now().strftime("%Y-%m-%d")
         data_inicio = (datetime.now() - relativedelta(months=6)).strftime("%Y-%m-%d")
         self.get_data(select_col, data_inicio, data_final, 'Diário', self.divisores[self.table])
-        time.sleep(1)
         return self.ugs
-
     def get_data(self, select_col, data_inicio, data_fim, periodo, divisores):
-        print('\n def get_data Tratamento de dados \n')
         if any([val is None for val in select_col.values()]):
             cols = ','.join(select_col.keys())
         else:
@@ -42,15 +63,10 @@ class Response:
             result['data_hora'] = pd.to_datetime(result['data_hora'])
             self.separar_ugs(result)
             df_consulta= self.consulta_geracao(cols, data_inicio, data_fim)
-
             df_consulta.columns = columns
             df_consulta = self.filtro_divisores(df_consulta)
             df_consulta['data_hora'] = pd.to_datetime(df_consulta['data_hora'])
             df_consulta = df_consulta.set_index('data_hora')
-            # print(df_consulta.head())
-            # print(df_consulta.shape)
-            # print(df_consulta.columns)
-            # print(columns)
             for column in df_consulta.columns:
                 if 'energia' in column:
                     key_a = column.split('_')
@@ -58,27 +74,21 @@ class Response:
                     self.ugs[nome]['geracao_mensal'] = self.prod_energia(df_consulta, column, "M")
                     self.ugs[nome]['geracao_diaria'] = self.prod_energia(df_consulta, column, "D")
                 if 'nivel' in column:
-                    # print(column)
                     self.ugs['gerais']['nivel_media_diaria'] = self.nivel_media_diaria(df_consulta, column)
-                    # df_consulta[column] = df_consulta[column].apply(lambda x: x / divisores['agua'])
-            # return self.ugs
         except Exception as e:
             raise Exception(f"Falha nos calculos de geração de energia: {e}")
     def nivel_media_diaria(self, df, col):
         ''' Função de cálculo da média diária de nível de água dos ultimos 30 dias'''
         try:
-            # Filtrar os últimos 30 dias
             df = df[df.index >= datetime.now() - relativedelta(days=30)]
-            # Calcular a média diária
             resultado = df.resample('D')[col].mean().to_frame()
             resultado[col] = resultado[col].apply(lambda x: round(x,2))
             resultado.index = resultado.index.map(lambda x: x.strftime('%d-%m-%Y'))
-            # Retornar a média diária
             return resultado.to_dict()
-
         except Exception as e:
             raise Exception(f"Falha filtro divisores linha 114: {e}")
     def compute_energy_production(self, series):
+        ''' Função que filtra os valores de energia e retorna a diferença entre o último e o primeiro valor válido do mês '''
         try:
             # Se a série estiver vazia ou todos os valores forem 0, retorne 0
             if series.empty or all(series == 0):
@@ -93,28 +103,13 @@ class Response:
         except Exception as e:
             raise Exception(f"Falha compute energy linha 128: {e}")
     def prod_energia(self, df, var, periodo):
+        ''' Função de cálculo de produção de energia por período '''
         try:
             if periodo == 'D':
                 df = df[df.index >= datetime.now() - relativedelta(days=30)]
             resultado = df.resample(periodo)[var].apply(self.compute_energy_production).to_frame()
             resultado.index = resultado.index.map(lambda x: x.strftime('%d-%m-%Y'))
-            # print(type(resultado))
-            # print(resultado.columns)
-            # print(resultado.index)
-            # print(resultado.index.apply(lambda x: x.strftime('%d/%m/%Y')))
-            # print('---------------------------')
-            # resultado['data_hora']= resultado['data_hora'].apply(lambda x: x.strftime('%d/%m/%Y'))
             resultado = resultado.to_dict()
-            # resultado = {key.strftime('%d/%m/%Y'): value for key, value in resultado.items()}
-            # for key, value in resultado.items():
-            #     key = {k.strftime('%d/%m/%Y'): value for k, value in values.items()}
-                # print('Chave: ', key)
-                # print('Valor: ', value)
-                # print('Tipo: ', type(value))
-                # for key_a, value_a in value.items():
-                #     print('Chave_a: ', key_a)
-                #     print('chave_a: ', type(key_a))
-                # print('----------------')
             return resultado
         except Exception as e:
             raise Exception(f"Falha nos calculos producao de energia linha 138: {e}")
@@ -125,7 +120,6 @@ class Response:
             df_consulta = pd.read_sql(query, self.db)
             return df_consulta
         except Exception as e:
-            print(e)
             raise Exception(f"Falha nos calculos de geração de energia: {e}")
 
     def get_activation(self, cols):

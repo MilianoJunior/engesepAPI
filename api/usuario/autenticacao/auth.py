@@ -1,4 +1,3 @@
-
 import hashlib
 import secrets
 import datetime
@@ -10,10 +9,31 @@ from api.usuario.dados.profile import Profile
 from api.usuario.dados.variaveis import variaveis
 from api.usina.tabela.usinas import Usinas
 from api.usina.resposta_app.resposta import Response
+from fastapi import HTTPException
+from typing import Optional
+import logging
+
+logging.basicConfig(level=logging.INFO,  # ou DEBUG, ERROR, etc.
+                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+                    handlers=[logging.StreamHandler(),
+                              logging.FileHandler("my_api.log")])
+
+logger = logging.getLogger(__name__)
 
 class User(BaseModel):
     email: str
     password: str
+
+class UserCreate(BaseModel):
+    nome: str
+    email: str
+    password: str
+    telefone: str
+    nascimento: str
+    usina: str
+    id_usina: int
+    privilegios: str
+    token: str
 
 class Token(BaseModel):
     token: str
@@ -23,7 +43,14 @@ class Usina(BaseModel):
     numero_turbinas: int
     localizacao: str
     potencia_instalada: float
-class BasicAuth:
+
+class Periodo(BaseModel):
+    periodo: str
+    data_inicio: str
+    data_final: str
+    token: str
+
+class Crypto:
 
     @staticmethod
     def hash_password(password: str, salt: bytes = None) -> str:
@@ -42,22 +69,252 @@ class BasicAuth:
         return pwdhash.hex() == stored_password
 
 
+class TokenManager:
+    TOKEN_EXPIRATION_TIME = datetime.timedelta(hours=6)
+
+    def __init__(self, db):
+        self.db = db
+
+    def verify_token(self, token: str) -> dict:
+        if not self.verify_token_exists(token):
+            return {'status': 'Token não encontrado.', 'data': None}
+        if not self.verify_token_expired(token):
+            return {'status': 'Token inativo.', 'data': None}
+        user_id = self.get_user_id_from_token(token)
+        return {'status': 'Token válido.', 'data': user_id}
+
+    def get_user_id_from_token(self, token: str) -> Optional[str]:
+        query = "SELECT userid FROM Tokens WHERE token=%s"
+        result = self.db.fetch_all(query, (token,))
+        if result:
+            return result[0][0]
+        return None
+
+    def generate_token(self) -> str:
+        return secrets.token_hex(16)
+
+    def register_token(self, user_id: str, expiration_time: Optional[datetime.datetime] = None):
+        if expiration_time is None:
+            expiration_time = datetime.datetime.now() + self.TOKEN_EXPIRATION_TIME
+        expiration_time_str = expiration_time.strftime('%Y-%m-%d %H:%M:%S')
+        query = "INSERT INTO Tokens (Userid, token, expiration_time) VALUES (%s, %s, %s)"
+        token = self.generate_token()
+        self.db.execute_query(query, (user_id, token, expiration_time_str))
+        return token
+
+    def remove_token(self, token: str):
+        query = "DELETE FROM Tokens WHERE token=%s"
+        self.db.execute_query(query, (token,))
+
+    def verify_token_exists(self, token: str) -> bool:
+        query = "SELECT token FROM Tokens WHERE token=%s"
+        result = self.db.fetch_all(query, (token,))
+        return bool(result)
+
+    def verify_token_expired(self, token: str) -> bool:
+        query = "SELECT expiration_time FROM Tokens WHERE token=%s"
+        result = self.db.fetch_all(query, (token,))
+        if result:
+            expiration_time = result[0][0]
+            if datetime.datetime.now() > expiration_time:
+                return False
+        return True
+
+    def verify_token_admin(self, token) -> bool:
+        ''' Função de verificação de token se é administrador '''
+        userid = self.get_user_id_from_token(token)
+        if not userid:
+            return False
+        query = f"SELECT privilegios FROM usuarios WHERE id='{userid}'"
+        result = self.db.fetch_all(query)
+        if result:
+            if result[0][0] == 2:
+                return True
+        return False
+
+class AuthenticationManager:
+    def __init__(self):
+        self.db = Database()
+        self.crypt = Crypto()
+        self.users = Profile(self.db)
+        self.usinas = Usinas(self.db)
+        self.token_manager = TokenManager(self.db)
+        self.variaveis = variaveis  # Esta variável parece ser global, certifique-se de que isso é intencional.
+
+    def authenticate(self, user: User) -> dict:
+        try:
+            userd = self.users.get_profile(user.email)
+            if not userd:
+                return {'status': 'Usuário não encontrado.'}
+            stored_password = userd[0][5]
+            user_id = userd[0][0]
+            if self.crypt.verify_password(stored_password, user.password):
+                token = self.token_manager.register_token(user_id)
+                return {'token': token, 'status': 'Usuário autenticado com sucesso.'}
+            else:
+                logger.info(f"Senha incorreta: {user_id}!")
+                return {'status': 'Senha incorreta.'}
+
+        except Exception as e:
+            logger.error(f"Authentication error: {e}")
+            raise HTTPException(status_code=401, detail="Falha no login.")
+
+    def logout(self, token: Token) -> dict:
+        try:
+            self.token_manager.remove_token(token.token)
+            return {'status': 'Usuário deslogado com sucesso.'}
+        except Exception as e:
+            logger.error(f"Logout error: {e}")
+            raise HTTPException(status_code=401, detail="Falha no logout.")
+
+    def create_profile(self, user: UserCreate):
+        ''' Função de cadastro de usuário '''
+        try:
+            userd = self.users.get_profile(user.email)
+            admin = self.token_manager.verify_token_admin(user.token)
+            if not admin:
+                return {'status': 'Usuário sem permissão para cadastrar.'}
+            if not userd:
+                user.password = self.crypt.hash_password(user.password)
+                result = self.users.create_profile(user)
+                return result
+            return {'status': 'Usuário já cadastrado.'}
+        except Exception as err:
+            logger.error(f"Create profile error: {err}")
+            raise HTTPException(status_code=401, detail="Falha no cadastro.")
+
+    def data(self, token: Token) -> dict:
+        """Faz a autenticação do token e retorna os dados do usuário."""
+        try:
+            start_time = time.time()
+
+            # Verificar token
+            authentication = self.token_manager.verify_token(token.token)
+            self._log_duration(start_time, 'Tempo de verificação do token')
+
+            if authentication['status'] != 'Token válido.':
+                return authentication
+
+            # Preencher variáveis
+            user_id = authentication['data']
+            variaveis['token'] = token.token
+
+            # Obter dados do usuário
+            self.get_user(user_id)
+            self._log_duration(start_time, 'Tempo de verificação do Usuário')
+
+            # Obter dados da usina
+            self.get_usina(self.variaveis['user']['usina_id'])
+            self._log_duration(start_time, 'Tempo de busca de dados da usina')
+
+            # Obter dados processados da usina
+            self.get_usina_dados(self.variaveis['user']['usina'])
+            self._log_duration(start_time, 'Tempo de busca de dados processados')
+
+            return {'status': 'Token válido.', 'data': self.variaveis}
+        except Exception as err:
+            logger.error(f"Data error: {err}")
+            raise HTTPException(status_code=401, detail=f"Falha na consulta de dados: {err}.")
+
+    def periodo(self, month: Periodo) -> dict:
+        """Realiza consultas com base no período fornecido."""
+        try:
+            start_time = time.time()
+
+            # Verificar token
+            authentication = self.token_manager.verify_token(month.token)
+            self._log_duration(start_time, 'Tempo de verificação do Mensal')
+
+            if authentication['status'] != 'Token válido.':
+                return authentication
+
+            # Obter tabela do usuário
+            user_id = authentication['data']
+            user_table = self.users.get_profile_id(user_id)[0][6]
+            response = Response(self.db, user_table)
+
+            # Consultar dados do período
+            result = response.get_periodo(month.data_inicio, month.data_final, month.periodo)
+            self._log_duration(start_time, 'Tempo de busca de dados mensais')
+
+            if result:
+                return {'status': 'Dados encontrados.', 'data': result}
+            return {'status': 'Dados não encontrados.'}
+        except Exception as err:
+            logger.error(f"Periodo error: {err}")
+            raise HTTPException(status_code=401, detail="Falha na consulta.")
+
+    def get_user(self, id: str) -> None:
+        try:
+            result = self.users.get_profile_id(id)
+            print('Usuário: ', result)
+            if result:
+                self.variaveis['user']['id'] = result[0][0]
+                self.variaveis['user']['nome'] = result[0][1]
+                self.variaveis['user']['telefone'] = result[0][2]
+                self.variaveis['user']['nascimento'] = result[0][3]
+                self.variaveis['user']['email'] = result[0][4]
+                self.variaveis['user']['usina'] = result[0][6]
+                self.variaveis['user']['usina_id'] = result[0][7]
+                self.variaveis['user']['privilegios'] = result[0][8]
+        except Exception as err:
+            logger.error(f"Get user error: {err}")
+            raise HTTPException(status_code=401, detail="Falha na consulta.")
+
+    def get_usina(self, usina_id: int)->None:
+        try:
+            result = self.usinas.get_usina_id(usina_id)
+            if result:
+                self.variaveis['usina']['usina_info']['id'] = result[0][0]
+                self.variaveis['usina']['usina_info']['nome'] = result[0][1]
+                self.variaveis['usina']['usina_info']['localizacao'] = result[0][3]
+                self.variaveis['usina']['usina_info']['numero_de_turbinas'] = result[0][2]
+                self.variaveis['usina']['usina_info']['potencia'] = result[0][4]
+                self.variaveis['usina']['usina_info']['nome_tabela'] = self.variaveis['user']['usina']
+        except Exception as err:
+            logger.error(f"Get usina error: {err}")
+            raise HTTPException(status_code=401, detail="Falha na consulta.")
+
+    def get_usina_dados(self, nome_tabela: int)->None:
+        ''' Função de consulta de usinas '''
+        try:
+            response = Response(self.db, nome_tabela)
+            result = response.get_data_app()
+            if result:
+                self.variaveis['usina']['usina_dados'] = result
+        except Exception as err:
+            logger.error(f"Get usina dados error: {err}")
+            raise HTTPException(status_code=401, detail="Falha na consulta.")
+
+    def _log_duration(self, start_time, message):
+        """Helper para registrar a duração de uma operação."""
+        duration = time.time() - start_time
+        logging.info(f"{message}: {duration:.2f} segundos")
+
+    # ... (Os outros métodos permanecem praticamente os mesmos. Você apenas precisa ajustar as chamadas relacionadas ao token para usar o TokenManager)
+
+
+
+
+'''
 class AuthenticationManager:
     TOKEN_EXPIRATION_TIME = datetime.timedelta(hours=6)  # 1 hour token expiration for this example
 
     def __init__(self):
         self.db = Database()
-        self.variaveis = variaveis
+        self.crypt = Crypto()
+        self.users = Profile(self.db)
         self.usinas = Usinas(self.db)
+        self.variaveis = variaveis
 
-    def authenticate(self, user: User, request: Request) -> dict:
+    def authenticate(self, user: User) -> dict:
         try:
-            userd = Profile(self.db).get_profile(user.email)
+            userd = self.users.get_profile(user.email)
             if not userd:
                 return {'status': 'Usuário não encontrado.'}
             stored_password = userd[0][5]
             user_id = userd[0][0]
-            if BasicAuth.verify_password(stored_password, user.password):
+            if self.crypt.verify_password(stored_password, user.password):
                 token = secrets.token_hex(16)
                 expiration_time = datetime.datetime.now() + self.TOKEN_EXPIRATION_TIME
                 expiration_time = expiration_time.strftime('%Y-%m-%d %H:%M:%S')
@@ -66,134 +323,210 @@ class AuthenticationManager:
             else:
                 return {'status': 'Senha incorreta.'}
         except Exception as err:
-            print(f"Failed to Login : {err}")
             raise HTTPException(status_code=401, detail="Falha no login.")
+
+    def logout(self, token: Token) -> dict:
+
+        try:
+            query = f"DELETE FROM Tokens WHERE token='{token.token}'"
+            self.db.execute_query(query)
+            return {'status': 'Usuário deslogado com sucesso.'}
+        except Exception as err:
+            raise HTTPException(status_code=401, detail="Falha no logout.")
+
+
     def register_token(self,user_id: str, token: str, expiration_time: datetime.datetime):
         try:
             query = f"INSERT INTO Tokens (Userid, token, expiration_time) VALUES ('{user_id}','{token}','{expiration_time}')"
             self.db.execute_query(query)
+            return True
         except Exception as err:
             raise HTTPException(status_code=401, detail="Falha no registro do token.")
 
-    def verify_token(self, token: Token) -> dict:
-        if not self.verify_token_exists(token.token):
-            return {'status': 'Token não encontrado.', 'data': None}
-        if not self.verify_token_expired(token.token):
-            return {'status': 'Token inativo.', 'data': None}
-        user_id = self.get_user_token(token.token)
-        return {'status': 'Token válido.', 'data': user_id}
+    def verify_token_admin(self, token) -> bool:
+
+        try:
+            print('Token: ', token)
+            # criar query para verificar se o usuário é administrador com base no token
+            userid = self.get_user_token(token)
+            if not userid:
+                return False
+            print('Userid: ', userid, type(userid))
+            query = f"SELECT privilegios FROM usuarios WHERE id='{userid}'"
+            result = self.db.fetch_all(query)
+            print('Result: ', result)
+            if result:
+                if result[0][0] == 2:
+                    return True
+            return False
+        except Exception as err:
+            raise HTTPException(status_code=401, detail="Falha na verificação do token.")
+
+    def verify_token(self, token) -> dict:
+
+        try:
+            if not self.verify_token_exists(token):
+                return {'status': 'Token não encontrado.', 'data': None}
+            if not self.verify_token_expired(token):
+                return {'status': 'Token inativo.', 'data': None}
+            user = self.get_user_token(token)
+            return {'status': 'Token válido.', 'data': user}
+        except Exception as err:
+            raise HTTPException(status_code=401, detail="Falha na verificação do token.")
 
     def verify_token_exists(self, token: str) -> bool:
-        query = f"SELECT token FROM Tokens WHERE token='{token}'"
-        result = self.db.fetch_all(query)
-        return bool(result)
 
+        try:
+            query = f"SELECT token FROM Tokens WHERE token='{token}'"
+            result = self.db.fetch_all(query)
+            return bool(result)
+        except Exception as err:
+            raise HTTPException(status_code=401, detail="Falha na verificação do token.")
     def verify_token_expired(self, token: str) -> bool:
-        query = f"SELECT expiration_time FROM Tokens WHERE token='{token}'"
-        result = self.db.fetch_all(query)
-        if result:
-            expiration_time = result[0][0]
-            print('Tempo de expiração: ', expiration_time, datetime.datetime.now())
-            if datetime.datetime.now() > expiration_time:
-                return False
-        return True
+
+        try:
+            query = f"SELECT expiration_time FROM Tokens WHERE token='{token}'"
+            result = self.db.fetch_all(query)
+            if result:
+                expiration_time = result[0][0]
+                print('Tempo de expiração: ', expiration_time, datetime.datetime.now())
+                if datetime.datetime.now() > expiration_time:
+                    return False
+            return True
+        except Exception as err:
+            raise HTTPException(status_code=401, detail=f"Falha na verificação do token: {err}.")
 
     def data(self, token: Token) -> dict:
-        def recursive_attributes(dados, depth=0, max_depth=30):
-            # Limit recursion depth to avoid infinite loops
-            if depth > max_depth:
-                return
-            # Loop through each attribute
-            for key, value in dados.items():
-                try:
-                    if isinstance(value, dict):
-                        print("--" * depth + f"{key}")
-                        recursive_attributes(value, depth + 1, max_depth)
-                    else:
-                        print("  " * depth + f"{key}: {value} , {type(key)}: {type(value)}")
-                except Exception as e:
-                    print("  " * depth + f"Error getting {value}: {e}")
         "Faz a autenticação do token e retorna os dados do usuário."
-        inicio = time.time()
-        authentication = self.verify_token(token)
-        print('########################################################################')
-        print('1 - Tempo de verificação do token: ', time.time() - inicio)
-        print('########################################################################')
-        if authentication['status'] != 'Token válido.':
-            return authentication
-        # início do preenchimento das variáveis
-        user_id = authentication['data']
-        # preenche as variáveis com os dados do token
-        variaveis['token'] = token.token
-        # preenche as variáveis com os dados do usuário
-        self.get_user(user_id)
-        print('########################################################################')
-        print('2 - Tempo de verificação do Usuário: ', time.time() - inicio)
-        print('########################################################################')
-        # preenche as variáveis com os dados da usina
-        self.get_usina(self.variaveis['user']['usina_id'])
-        # preenche as variáveis com os dados das turbinas
-        print('########################################################################')
-        print('3 - Tempo de busca de dados da usina: ', time.time() - inicio)
-        print('########################################################################')
-        self.get_usina_dados(self.variaveis['user']['usina'])
-        print('########################################################################')
-        print('4 - Tempo de busca de dados processados: ', time.time() - inicio)
-        print('########################################################################')
-        # time.sleep(3)
-        # print('Variáveis: ', self.variaveis)
-        # recursive_attributes(self.variaveis)
-        return {'status': 'Token válido.', 'data': self.variaveis}
+        try:
+            inicio = time.time()
+            authentication = self.verify_token(token.token)
+            print('########################################################################')
+            print('1 - Tempo de verificação do token: ', time.time() - inicio)
+            print('########################################################################')
+            if authentication['status'] != 'Token válido.':
+                return authentication
+            # início do preenchimento das variáveis
+            user_id = authentication['data']
+            print('Userid: ', user_id)
+            print('authentication: ', authentication)
+            # preenche as variáveis com os dados do token
+            variaveis['token'] = token.token
+            # preenche as variáveis com os dados do usuário
+            self.get_user(user_id)
+            print('########################################################################')
+            print('2 - Tempo de verificação do Usuário: ', time.time() - inicio)
+            print('########################################################################')
+            # preenche as variáveis com os dados da usina
+            self.get_usina(self.variaveis['user']['usina_id'])
+            # preenche as variáveis com os dados das turbinas
+            print('########################################################################')
+            print('3 - Tempo de busca de dados da usina: ', time.time() - inicio)
+            print('########################################################################')
+            self.get_usina_dados(self.variaveis['user']['usina'])
+            print('########################################################################')
+            print('4 - Tempo de busca de dados processados: ', time.time() - inicio)
+            print('########################################################################')
+            return {'status': 'Token válido.', 'data': self.variaveis}
+        except Exception as err:
+            raise HTTPException(status_code=401, detail=f"Falha na consulta de dados: {err}.")
+
+    def recuperar_senha(self, email: str) -> dict:
+
+        try:
+            pass
+        except Exception as err:
+            raise HTTPException(status_code=401, detail=f"Falha na recuperação de senha: {err}.")
+
+    def alterar_senha(self, email: str, senha: str) -> dict:
+
+        try:
+            userd = self.user.get_profile(email)
+            if not userd:
+                return {'status': 'Usuário não encontrado.'}
+            senha = self.crypt.hash_password(senha)
+            return self.user.modify_password(email, senha)
+        except Exception as err:
+            raise HTTPException(status_code=401, detail="Falha na alteração de senha.")
+
+    def periodo(self, month: Periodo) -> dict:
+
+        try:
+            inicio = time.time()
+            authentication = self.verify_token(month.token)
+            print('########################################################################')
+            print('1 - Tempo de verificação do Mensal: ', time.time() - inicio)
+            print('########################################################################')
+            if authentication['status'] != 'Token válido.':
+                return authentication
+            user_id = authentication['data']
+            print('Userid: ', user_id)
+            user_table = self.users.get_profile_id(user_id)[0][6]
+            data_final = month.data_final
+            data_inicio = month.data_inicio
+            print('Data final: ', data_final)
+            print('Data inicial: ', data_inicio)
+            print('Tabela: ', user_table)
+            response = Response(self.db, user_table)
+            result = response.get_periodo(data_inicio, data_final, month.periodo)
+            # print('########################################################################')
+            # print('2 - Tempo de busca de dados mensais: ', time.time() - inicio)
+            # print('########################################################################')
+            if result:
+                return {'status': 'Dados encontrados.', 'data': result}
+            return {'status': 'Dados não encontrados.'}
+        except Exception as err:
+            raise HTTPException(status_code=401, detail="Falha na consulta.")
 
     def get_user_token(self, token: str) -> str:
-        query = f"SELECT userid FROM Tokens WHERE token='{token}'"
-        result = self.db.fetch_all(query)
-        if result:
-            return result[0][0]
-        return None
+        try:
+            query = f"SELECT userid FROM Tokens WHERE token='{token}'"
+            result = self.db.fetch_all(query)
+            if result:
+                return result[0][0]
+            return False
+        except Exception as err:
+            raise HTTPException(status_code=401, detail="Falha get user token.")
 
-    def get_user(self, user_id: str) -> None:
-        query = f"SELECT * FROM usuarios WHERE id='{user_id}'"
-        result = self.db.fetch_all(query)
-        print('Usuário: ', result)
-        if result:
-            self.variaveis['user']['id'] = result[0][0]
-            self.variaveis['user']['nome'] = result[0][1]
-            self.variaveis['user']['telefone'] = result[0][2]
-            self.variaveis['user']['nascimento'] = result[0][3]
-            self.variaveis['user']['email'] = result[0][4]
-            self.variaveis['user']['usina'] = result[0][6]
-            self.variaveis['user']['usina_id'] = result[0][7]
-            self.variaveis['user']['privilegios'] = result[0][8]
+    def get_user(self, id: str) -> None:
+        try:
+            result = self.users.get_profile_id(id)
+            print('Usuário: ', result)
+            if result:
+                self.variaveis['user']['id'] = result[0][0]
+                self.variaveis['user']['nome'] = result[0][1]
+                self.variaveis['user']['telefone'] = result[0][2]
+                self.variaveis['user']['nascimento'] = result[0][3]
+                self.variaveis['user']['email'] = result[0][4]
+                self.variaveis['user']['usina'] = result[0][6]
+                self.variaveis['user']['usina_id'] = result[0][7]
+                self.variaveis['user']['privilegios'] = result[0][8]
+        except Exception as err:
+            raise HTTPException(status_code=401, detail="Falha na consulta.")
     def get_usina(self, usina_id: int)->None:
-        result = self.usinas.get_usina_id(usina_id)
-        print('Usina: ', result)
-        if result:
-            self.variaveis['usina']['usina_info']['id'] = result[0][0]
-            self.variaveis['usina']['usina_info']['nome'] = result[0][1]
-            self.variaveis['usina']['usina_info']['localizacao'] = result[0][3]
-            self.variaveis['usina']['usina_info']['numero_de_turbinas'] = result[0][2]
-            self.variaveis['usina']['usina_info']['potencia'] = result[0][4]
-            self.variaveis['usina']['usina_info']['nome_tabela'] = self.variaveis['user']['usina']
+        try:
+            result = self.usinas.get_usina_id(usina_id)
+            if result:
+                self.variaveis['usina']['usina_info']['id'] = result[0][0]
+                self.variaveis['usina']['usina_info']['nome'] = result[0][1]
+                self.variaveis['usina']['usina_info']['localizacao'] = result[0][3]
+                self.variaveis['usina']['usina_info']['numero_de_turbinas'] = result[0][2]
+                self.variaveis['usina']['usina_info']['potencia'] = result[0][4]
+                self.variaveis['usina']['usina_info']['nome_tabela'] = self.variaveis['user']['usina']
+        except Exception as err:
+            raise HTTPException(status_code=401, detail="Falha na consulta.")
 
     def get_usina_dados(self, nome_tabela: int)->None:
-        ''' Função de consulta de usinas '''
         try:
             response = Response(self.db, nome_tabela)
             result = response.get_data_app()
-            print('Dados da usina: ', result)
             if result:
                 self.variaveis['usina']['usina_dados'] = result
         except Exception as err:
-            print(f"Failed to connect to database: {err}")
-            raise
+            raise HTTPException(status_code=401, detail="Falha na consulta.")
 
-    def create_usinas_test(self):
-        us = Usinas(self.db)
-        usina = Usina(nome='CGH Maria da Luz', numero_turbinas=1, localizacao='Abelardo do Luz - SC, 89830-000', potencia_instalada=0.1)
-        us.create_usina(usina)
-        usina = Usina(nome='CGH Granada', numero_turbinas=2, localizacao='Romelândia - SC, 89908-000', potencia_instalada=3.0)
-        us.create_usina(usina)
+'''
+
 
 
 
