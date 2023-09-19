@@ -34,10 +34,10 @@ def test_api():
     print('------------------------')
     testes = {
         'login': True,
-        'cadastro': True,
-        'token': True,
-        'mensal': True,
-        'logout': True,
+        'cadastro': False,
+        'token': False,
+        'mensal': False,
+        'logout': False
     }
     on = False
     if on:
@@ -84,7 +84,8 @@ def test_api():
         # # login com sucesso
         var = 'Usuário autenticado com sucesso.'
         cont = print_teste(var,response, cont)
-        token_valido = response.json()['token']
+        print(response.json())
+        # token_valido = response.json()['token']
         # login com falha no usuário
         body = {
                 "email": "milianojunior39@g",

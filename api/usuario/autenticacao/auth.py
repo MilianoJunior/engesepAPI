@@ -143,6 +143,10 @@ class AuthenticationManager:
 
     def authenticate(self, user: User) -> dict:
         try:
+            print('Autenticando usuário...')
+            print(user.email, type(user.email))
+            print(user.password, type(user.password))
+            print('          ')
             userd = self.users.get_profile(user.email)
             if not userd:
                 return {'status': 'Usuário não encontrado.'}
