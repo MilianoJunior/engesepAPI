@@ -34,9 +34,9 @@ def test_api():
     print('------------------------')
     testes = {
         'login': True,
-        'cadastro': False,
-        'token': False,
-        'mensal': False,
+        'cadastro': True,
+        'token': True,
+        'mensal': True,
         'logout': False
     }
     on = False
@@ -47,11 +47,12 @@ def test_api():
     cont = 0
     def print_teste(var,response,cont=cont):
         cont += 1
-        teste = "True" if response.json()['status'] == var else "Erro"
-        if teste == "Erro":
-            print(response.json())
-        print(cont, teste + ' - ' + var)
-        print('-------------------------------------------------')
+        if response.status_code == 200:
+            teste = "True" if response.json()['status'] == var else "Erro"
+            if teste == "Erro":
+                print(response.json())
+            print(cont, teste + ' - ' + var)
+            print('-------------------------------------------------')
         return cont
 
     def recursive_attributes(dados, depth=0, max_depth=30):
@@ -85,7 +86,7 @@ def test_api():
         var = 'Usuário autenticado com sucesso.'
         cont = print_teste(var,response, cont)
         print(response.json())
-        # token_valido = response.json()['token']
+        token_valido = response.json()['token']
         # login com falha no usuário
         body = {
                 "email": "milianojunior39@g",

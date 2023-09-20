@@ -29,9 +29,8 @@ class Database:
             if connection.is_connected():
                 print("Conexão com o banco de dados estabelecida!")
                 return connection
-        except Error as e:
-            print(f"Erro ao conectar ao banco de dados: {e}")
-            return None
+        except Exception as e:
+            raise Exception(f"class Database: Erro ao conectar ao banco de dados: {e}")
 
     def execute_query(self, query, params=None):
         cursor = self.connection.cursor(buffered=True)  # Use a buffered cursor
@@ -42,20 +41,21 @@ class Database:
                 cursor.execute(query)
             self.connection.commit()
             return cursor
-        except Error as e:
-            print(f"Erro ao executar a query: {e}")
-            return None
+        except Exception as e:
+            raise Exception(f"class Database: Erro ao conectar ao banco de dados: {e}")
 
     def fetch_all(self, query, params=None):
         try:
             cursor = self.execute_query(query, params)
             return cursor.fetchall()
-        except Error as e:
-            print(f"Erro ao executar a query fetch_all: {e}")
-            return None
+        except Exception as e:
+            raise Exception(f"class Database: Erro ao conectar ao banco de dados: {e}")
 
     def close_connection(self):
-        if self.connection.is_connected():
-            self.connection.close()
-            print("Conexão com o banco de dados encerrada!")
-            Database._instance = None  # Reset the singleton instance
+        try:
+            if self.connection.is_connected():
+                self.connection.close()
+                print("Conexão com o banco de dados encerrada!")
+                Database._instance = None  # Reset the singleton instance
+        except Exception as e:
+            raise Exception(f"class Database: Erro ao conectar ao banco de dados: {e}")
