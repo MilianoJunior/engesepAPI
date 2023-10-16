@@ -12,8 +12,11 @@ from api.usina.resposta_app.resposta import Response
 from fastapi import HTTPException
 from typing import Optional
 import logging
+import traceback
+import warnings
+warnings.filterwarnings('ignore')
 
-logging.basicConfig(level=logging.INFO,  # ou DEBUG, ERROR, etc.
+logging.basicConfig(level=logging.ERROR,  # ou DEBUG, ERROR, etc.
                     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                     handlers=[logging.StreamHandler(),
                               logging.FileHandler("my_api.log")])
