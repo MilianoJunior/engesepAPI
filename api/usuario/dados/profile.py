@@ -8,6 +8,13 @@ class Profile:
         self.name = name
         self.db = db
 
+    def _debug(self, msg):
+        if os.getenv('DEBUG') == 'True':
+            if 'new' in msg:
+                print(f"{'-'*20} {msg} {'-'*20}")
+            else:
+                print(msg)
+
     def get_profile_id(self, id):
         ''' Função de consulta de usuário '''
         try:
@@ -20,8 +27,10 @@ class Profile:
     def get_profile(self, email):
         ''' Função de consulta de usuário '''
         try:
+            print('Buscando usuário ...')
             query = "SELECT * FROM usuarios WHERE email=%s"
             result = self.db.fetch_all(query, (email,))
+            print('Usuário: ', result)
             return result if result else False
         except Exception as err:
             raise Exception(f"Failed get profile: {err}")

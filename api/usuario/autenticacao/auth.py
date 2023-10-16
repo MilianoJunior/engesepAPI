@@ -14,6 +14,8 @@ from typing import Optional
 import logging
 import traceback
 import warnings
+import os
+
 warnings.filterwarnings('ignore')
 
 logging.basicConfig(level=logging.ERROR,  # ou DEBUG, ERROR, etc.
@@ -143,13 +145,17 @@ class AuthenticationManager:
         self.usinas = Usinas(self.db)
         self.token_manager = TokenManager(self.db)
         self.variaveis = variaveis  # Esta variável parece ser global, certifique-se de que isso é intencional.
-
+    def _debug(self, msg):
+        if os.getenv('DEBUG') == 'True':
+            if 'new' in msg:
+                print(f"{'-'*20} {msg} {'-'*20}")
+            else:
+                print(msg)
     def authenticate(self, user: User) -> dict:
         try:
-            print('Autenticando usuário...')
-            print(user.email, type(user.email))
-            print(user.password, type(user.password))
-            print('          ')
+            self._debug('1 - Autenticando usuário...')
+            self._debug(f'{user.email, type(user.email)}')
+            self._debug(f'{user.password, type(user.password)}')
             userd = self.users.get_profile(user.email)
             if not userd:
                 return {'status': 'Usuário não encontrado.'}
