@@ -17,6 +17,10 @@ from api.testes.testes import test_api, list_installed_packages
 app = FastAPI()
 
 '''Sistema de autenticação'''
+
+app.get('/')  # registro a função home no app
+def read_root():
+    return {"Hello": "Engesep API"}
 auth = AuthenticationManager()  # registro a classe Auth no app
 app.post('/login/')(auth.authenticate)  # registro a função login no app
 
