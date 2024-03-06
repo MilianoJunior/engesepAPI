@@ -1,64 +1,91 @@
-# importações
-from mysql.connector import errorcode
-from multiprocessing import Process
-from pydantic import BaseModel
-from dotenv import load_dotenv
 from fastapi import FastAPI
-import mysql.connector
-import pandas as pd
-import os
-import time
-
-
-# minhas classes
-from api.usuario.autenticacao.auth import AuthenticationManager
-from api.testes.testes import test_api, list_installed_packages
 
 app = FastAPI()
 
-'''Sistema de autenticação'''
-
-app.get('/')  # registro a função home no app
+@app.get("/")
 def read_root():
-    return {"Hello": "Engesep API"}
-auth = AuthenticationManager()  # registro a classe Auth no app
-app.post('/login/')(auth.authenticate)  # registro a função login no app
+    return {"Hello": "World"}
 
-'''Sistema de rotas por token'''
-app.post('/data/')(auth.data)  # verifica se o token é válido e retorna os dados
-app.post('/logout/')(auth.logout)  # registro a função logout no app
-app.post('/cadastro/')(auth.create_profile)  # registro a função logout no app
-app.post('/periodo/')(auth.periodo)  # registro a função alterar senha no app
+@app.get("/items/{item_id}")
+def read_item(item_id: int, q: str = None):
+    return {"item_id": item_id, "q": q}
+
 
 def run_uvicorn():
     import uvicorn
+    host = os.getenv("HOST", "127.0.0.1")
     uvicorn.run("main:app", host='0.0.0.0', port=8000, log_level="info")
 
 if __name__ == "__main__":
-    teste = False
-    if teste:
-        installed_packages = list_installed_packages()
-        for package, version in installed_packages.items():
-            print(f"{package}=={version}")
+    run_uvicorn()
 
-        # Inicialize o servidor FastAPI em um novo processo
-        server_process = Process(target=run_uvicorn)
-        server_process.start()
 
-        # Espere um pouco para garantir que o servidor esteja em execução
-        import time
-        time.sleep(2)
 
-        # Inicialize a função de teste em um novo processo
-        test_process = Process(target=test_api)
-        test_process.start()
 
-        # Junte os processos para esperar que eles terminem
-        test_process.join()
-        server_process.terminate()
-        server_process.join()
-    else:
-        run_uvicorn()
+
+
+# importações
+# from mysql.connector import errorcode
+# from multiprocessing import Process
+# from pydantic import BaseModel
+# from dotenv import load_dotenv
+# from fastapi import FastAPI
+# import mysql.connector
+# import pandas as pd
+# import os
+# import time
+#
+#
+# # minhas classes
+# # from api.usuario.autenticacao.auth import AuthenticationManager
+# # from api.testes.testes import test_api, list_installed_packages
+#
+# app = FastAPI()
+#
+# '''Sistema de autenticação'''
+#
+# app.get('/')  # registro a função home no app
+# def read_root():
+#     return {"Hello": "Engesep API"}
+# # auth = AuthenticationManager()  # registro a classe Auth no app
+# # app.post('/login/')(auth.authenticate)  # registro a função login no app
+# #
+# # '''Sistema de rotas por token'''
+# # app.post('/data/')(auth.data)  # verifica se o token é válido e retorna os dados
+# # app.post('/logout/')(auth.logout)  # registro a função logout no app
+# # app.post('/cadastro/')(auth.create_profile)  # registro a função logout no app
+# # app.post('/periodo/')(auth.periodo)  # registro a função alterar senha no app
+#
+# def run_uvicorn():
+#     import uvicorn
+#     host = os.getenv("HOST", "127.0.0.1")
+#     uvicorn.run("main:app", host='0.0.0.0', port=8000, log_level="info")
+#
+# if __name__ == "__main__":
+#     teste = False
+#     if teste:
+#         installed_packages = list_installed_packages()
+#         for package, version in installed_packages.items():
+#             print(f"{package}=={version}")
+#
+#         # Inicialize o servidor FastAPI em um novo processo
+#         server_process = Process(target=run_uvicorn)
+#         server_process.start()
+#
+#         # Espere um pouco para garantir que o servidor esteja em execução
+#         import time
+#         time.sleep(2)
+#
+#         # Inicialize a função de teste em um novo processo
+#         test_process = Process(target=test_api)
+#         test_process.start()
+#
+#         # Junte os processos para esperar que eles terminem
+#         test_process.join()
+#         server_process.terminate()
+#         server_process.join()
+#     else:
+#         run_uvicorn()
 
 
 
