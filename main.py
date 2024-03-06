@@ -4,7 +4,14 @@ app = FastAPI()
 
 @app.get("/")
 def read_root():
-    return {"Hello": "World"}
+
+    # criar dados de teste para verificar a quantidade maxima de dados que podem ser retornados
+    dados = ''
+    for i in range(100000):
+        dados += f'{i},'
+
+    print(len(dados))
+    return {"Hello": dados}
 
 @app.get("/items/{item_id}")
 def read_item(item_id: int, q: str = None):
