@@ -27,6 +27,10 @@ rotas = Rotas()
 '''
 Definição data que torna os dados da produção de energia acumulada
 '''
+@app.get("/")
+def home():
+    return {"message": "API de resposta do sistema de monitoramento de usinas."}
+
 app.post("/data/producao_acumulada")(rotas.get_data)
 
 
