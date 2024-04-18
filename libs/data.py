@@ -24,8 +24,8 @@ class Data:
         self.periodos = {
                         'day': 'D',
                         'week': 'W',
-                        'month': 'ME',
-                        'year': 'YE',
+                        'month': 'M',
+                        'year': 'Y',
                         'hour': 'H',
                     }
 
