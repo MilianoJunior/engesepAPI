@@ -81,11 +81,19 @@ class TokenManager:
         self.db = db
 
     def verify_token(self, token: str) -> dict:
+        ''' Função de verificação de token '''
+
+        # Verificar se o token existe
         if not self.verify_token_exists(token):
             return {'status': 'Token não encontrado.', 'data': None}
+
+        # Verificar se o token está expirado
         if not self.verify_token_expired(token):
             return {'status': 'Token inativo.', 'data': None}
+
+        # Verificar se o token é de um administrador
         user_id = self.get_user_id_from_token(token)
+
         return {'status': 'Token válido.', 'data': user_id}
 
     def get_user_id_from_token(self, token: str) -> Optional[str]:

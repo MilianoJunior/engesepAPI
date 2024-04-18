@@ -52,11 +52,26 @@ A api necessita das seguintes funções:
         ### 4.2 Função que valida os dados
         ### 4.3 Função que formata os dados
 
-# Visualização dos dados
-    ## 1. Sistema de visualização dos dados
-        ### 1.1 Função que requisita os dados da usina
-        ### 1.2 Função que gerar os gráficos
-        ### 1.3 Função que organiza os gráficos nos templates
+    # 5. Criar um sistema de Logs para registrar as ações do usuário e do sistema.
+
+# Aplicar os testes unitários para cada função em ambiente de desenvolvimento a cada implementação de uma função.
+
+# Criar a documentação da API.
+
+# Implantar a API em um ambiente de produção e testar as funcionalidades.
+
+Requisitos:
+    - Utilizar o idioma português.
+    - Utilizar o framework FastAPI.
+    - Utilizar o banco de dados MySQL.
+    - Utilizar o sistema de controle de versão Git.
+    - Utilizar a plataforma web railway para hospedar o projeto.
+    - A API deve ser desenvolvida com boas práticas de código.
+    - Todos os aspectos da comunicação entre a API e o banco de dados devem ser considerados.
+    - Implementar um sistema de relatórios da API quando finalizada para mostrar o funcionamento da API.
+
+
+
 
 '''
 api_info = {

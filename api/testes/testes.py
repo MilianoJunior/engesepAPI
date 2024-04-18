@@ -13,11 +13,12 @@ def test_api():
     print('\nTestes unitários\n')
     print('------------------------')
     testes = {
-        'login': True,
-        'cadastro': True,
-        'token': True,
-        'mensal': True,
-        'logout': True,
+        'consulta': True, # consulta de dados
+        'login': False,
+        'cadastro': False,
+        'token': False,
+        'mensal': False,
+        'logout': False,
     }
     on = False
     if on:
@@ -27,12 +28,13 @@ def test_api():
     cont = 0
     def print_teste(var,response,cont=cont):
         cont += 1
-        if response.status_code == 200:
-            teste = "True" if response.json()['status'] == var else "Erro"
-            if teste == "Erro":
-                print(response.json())
-            print(cont, teste + ' - ' + var)
-            print('-------------------------------------------------')
+        # if response.status_code == 200:
+        # print('Print: ', response.headers) #dir(response))
+        teste = "True" if response['headers']['status'] == var else "Erro"
+        if teste == "Erro":
+            print(response.detail)
+        print(cont, teste + ' - ' + var)
+        print('-------------------------------------------------')
         return cont
 
     def recursive_attributes(dados, depth=0, max_depth=30):
@@ -49,6 +51,60 @@ def test_api():
                     print("  " * depth + f"{key}: {value}")
             except Exception as e:
                 print("  " * depth + f"Error getting {value}: {e}")
+
+    if testes['consulta']:
+        print('------------------------')
+        print('Test Consulta')
+        print('------------------------')
+        url = url.replace('rota', 'data')
+        body = {
+            "usina": "cgh_grannada",
+            "periodo": {
+                        'inicio':'2024-03-01',
+                        'fim':'2024-03-31',
+            }
+        }
+        print(url)
+        headers = {'Content-type': 'application/json'}
+        response = requests.post(url, data=json.dumps(body), headers=headers)
+        var = 'Erro ao processar a consulta'
+        recursive_attributes(dict(response.json()))
+        cont = print_teste(var, dict(response.json()), cont)
+
+        print('------------------------')
+
+        body = {
+            "usina": "cgh_granada",
+            "periodo": {
+                'inicio': '2024-01-01',
+                'fim': '2024-01-31',
+            }
+        }
+        print(url)
+        headers = {'Content-type': 'application/json'}
+        response = requests.post(url, data=json.dumps(body), headers=headers)
+        var = 'Erro ao processar a consulta'
+        recursive_attributes(dict(response.json()))
+        cont = print_teste(var, dict(response.json()), cont)
+
+
+        # body = {
+        #     "usina": "cgh_granada",
+        #     "periodo": {
+        #         'inicio': '2024-01-01',
+        #         'fim': '2024-01-31',
+        #     }
+        # }
+        # print(url)
+        # headers = {'Content-type': 'application/json'}
+        # response = requests.post(url, data=json.dumps(body), headers=headers)
+        # var = 'Nenhum dado encontrado'
+        # cont = print_teste(var, response, cont)
+        # print('Json: ', response.json())
+        # print('------------------------')
+        # print(' Code: ', response.status_code)
+        # if response.status_code == 200:
+        #     recursive_attributes(response.json()['data'])
 
     if testes['login']:
         print('------------------------')
