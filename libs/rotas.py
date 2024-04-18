@@ -10,7 +10,15 @@ import secrets
 
 
 class Consulta(BaseModel):
-    ''' Classe para receber os dados da requisição '''
+    """
+    Esta rota retorna os dados de produção acumulada para uma usina específica.
+
+    Parâmetros:
+    - `consulta`: Um objeto `Consulta` que contém os detalhes da consulta.
+
+    Retorna:
+    - Um objeto JSON contendo os dados de produção acumulada.
+    """
     usina: str
     coluna: Optional[list] = ['acumulador_energia']
     periodo: Optional[str] = 'D'

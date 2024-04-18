@@ -157,3 +157,11 @@ class Data:
         except Exception as e:
             raise Exception(f"Erro ao verificar se o DataFrame é vazio {e}")
 
+'''
+A ordem dos fatores importa! Por que o STF vem a muito tempo espantando a população brasileira com suas decisões. 
+Se tornou um órgão político e não mais um órgão de justiça. A depredação do dia 8 de janeiro de 2023, em Brasília,
+é uma resposta a essas decisões.
+O que a mídia e o governo faz é criar narrativas para manipular a população. Escalando suas ações para um estado de
+abuso de poder que se torna insustentável. 
+'''
+

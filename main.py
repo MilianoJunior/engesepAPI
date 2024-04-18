@@ -16,7 +16,12 @@ import time
 '''
 Definição da aplicação FastAPI
 '''
-app = FastAPI()
+
+app = FastAPI(
+    title="ENGESEP",
+    description="Documentação da API ENGESEP",
+    version="1.0.0",
+)
 
 '''
 Definição das rotas da API
@@ -27,10 +32,12 @@ rotas = Rotas()
 '''
 Definição data que torna os dados da produção de energia acumulada
 '''
-@app.get("/")
-def home():
-    return {"message": "API de resposta do sistema de monitoramento de usinas."}
 
+'''
+Endpoint para obter os dados da produção acumulada
+Para diferentes períodos de tempo
+
+'''
 app.post("/data/producao_acumulada")(rotas.get_data)
 
 
