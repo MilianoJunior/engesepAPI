@@ -22,15 +22,24 @@ class Consulta(BaseModel):
     usina: str
     coluna: Optional[list] = ['acumulador_energia']
     periodo: Optional[str] = 'D'
-    data_inicio: Optional[str] = datetime.now().strftime('%Y-%m-%d')
-    data_fim: Optional[str] = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+    data_inicio: Optional[str] = datetime.now().strftime('%d/%m/%Y')
+    data_fim: Optional[str] = (datetime.now() - timedelta(days=30)).strftime('%d/%m/%Y')
     token: str
 
     @validator('data_inicio', 'data_fim')
     def validar_formato_data(cls, v):
-        if not re.match(r"^\d{4}-\d{2}-\d{2}$", v):
-            raise ValueError('Data deve estar no formato AAAA-MM-DD')
-        return v
+        try:
+            # Tentar analisar a data no formato 'DD/MM/AAAA'
+            data = datetime.strptime(v, '%d/%m/%Y')
+        except ValueError:
+            try:
+                # Se a data não está no formato 'DD/MM/AAAA', tentar analisar no formato 'AAAA-MM-DD'
+                data = datetime.strptime(v, '%Y-%m-%d')
+            except ValueError:
+                # Se a data não está em nenhum dos formatos, lançar um erro
+                raise ValueError('Data deve estar no formato DD/MM/AAAA ou AAAA-MM-DD')
+        # Reformatar a data para o formato 'AAAA-MM-DD'
+        return data.strftime('%Y-%m-%d')
 
     @validator('usina')
     def validar_nome_usina(cls, v):
@@ -71,6 +80,7 @@ class Rotas:
         ''' Retorna os dados do mês solicitado '''
 
         try:
+            print('1 - Consulta - ',consulta)
             if not self.auth.verify_password(self.auth.hash_password(self.data.token), consulta.token):
                 print('1 - Senha incorreta - ',consulta.token)
                 return HTTPException(status_code=401, detail="Token inválido",
