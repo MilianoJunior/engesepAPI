@@ -39,6 +39,7 @@ Para diferentes períodos de tempo
 
 '''
 app.post("/data/producao_acumulada")(rotas.get_data)
+app.post("/columns")(rotas.get_columns)
 
 
 # 12 - Iniciar o servidor FastAPI

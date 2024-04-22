@@ -47,6 +47,25 @@ class Consulta(BaseModel):
             raise ValueError('Nome da usina inválido')
         return v
 
+class Column(BaseModel):
+
+    usina: str
+    token: str
+
+    @validator('usina')
+    def validar_nome_usina(cls, v):
+        if not re.match(r"^[a-zA-Z0-9_]+$", v):
+            raise ValueError('Nome da usina inválido')
+        return v
+
+    @validator('token')
+    def validar_token(cls, v):
+        if not re.match(r"^[a-zA-Z0-9_]+$", v):
+            raise ValueError('Token inválido')
+        return v
+
+
+
 class Crypto:
 
     @staticmethod
@@ -90,6 +109,20 @@ class Rotas:
             dados = self.data.process(consulta)
             return dados
 
+
+        except Exception as e:
+            return HTTPException(status_code=404, detail=str(e),
+                                 headers={"status": f"Erro ao processar a consulta: {e}"})
+
+    async def get_columns(self,column: Column):
+        ''' Retorna as colunas da tabela solicitada '''
+        try:
+            if not self.auth.verify_password(self.auth.hash_password(self.data.token), column.token):
+                return HTTPException(status_code=401, detail="Token inválido",
+                                        headers={"status": "Token inválido"})
+
+            columns = self.data.get_columns(column)
+            return columns
 
         except Exception as e:
             return HTTPException(status_code=404, detail=str(e),

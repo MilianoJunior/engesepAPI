@@ -41,28 +41,32 @@ class Data:
             consulta = self.sanitize(consulta)
 
             # consultar as colunas que existem na tabela
-            query_columns = f"SHOW COLUMNS FROM {consulta.usina};"
+            query_columns = f"SHOW COLUMNS FROM {consulta['usina']};"
+            # print('1- ',query_columns)
 
             # executar a query com a função fetch_all
             df_columns = self.connection.fetch_all(query_columns)
+
+            # print('2- ',df_columns)
 
             # verificar se o DataFrame está vazio
             self.is_empty(df_columns)
 
             # declara variável para armazenar as colunas
             columns = 'data_hora,'
+            # print('3- ',consulta['coluna'], type(consulta['coluna']))
 
             # verificar se a coluna solicitada existe
             for column in df_columns['Field'].values:
-                if all([name in column for name in consulta.coluna]):
+                if all([name in column for name in consulta['coluna']]):
                     columns += column + ','
 
             # tratar a string columns
             columns = columns[:-1]
 
             # criar a query
-            query = f"SELECT {columns} FROM {consulta.usina} WHERE data_hora BETWEEN '{consulta.data_inicio}' AND '{consulta.data_fim}';"
-
+            query = f"SELECT {columns} FROM {consulta['usina']} WHERE data_hora BETWEEN '{consulta['data_inicio']}' AND '{consulta['data_fim']}';"
+            # print(' Query: ',query)
 
             # executar a query com a função fetch_all
             df = self.connection.fetch_all(query)
@@ -82,7 +86,7 @@ class Data:
             # Calcular a produção de energia para determinado periodo
             for column in df.columns:
                 if 'acumulador_energia' in column:
-                    df_producao[column] = self.calculate_production(df, column, period=consulta.periodo)
+                    df_producao[column] = self.calculate_production(df, column, period=consulta['periodo'])
 
             # Substituir valores NaN antes de converter o DataFrame em um dicionário
             df_producao.fillna(0, inplace=True)
@@ -95,6 +99,31 @@ class Data:
 
         except Exception as e:
             raise Exception(f"Erro ao processar os dados da consulta {e}")
+
+    def get_columns(self, column):
+        ''' Retorna as colunas da tabela solicitada '''
+
+        try:
+
+            # Sanitização das entradas
+            # print(column, type(column), column.dict())
+            column = self.sanitize(column)
+
+            # consultar as colunas que existem na tabela
+            query_columns = f"SHOW COLUMNS FROM {column['usina']};"
+            # print(query_columns)
+
+            # executar a query com a função fetch_all
+            df_columns = self.connection.fetch_all(query_columns)
+
+            # verificar se o DataFrame está vazio
+            self.is_empty(df_columns)
+
+            # retornar as colunas
+            return {"status": "ok", "columns": df_columns['Field'].to_dict()}
+
+        except Exception as e:
+            raise Exception(f"Erro ao retornar as colunas da tabela solicitada {e}")
 
 
     def calculate_production(self, df, column, period):
@@ -132,11 +161,12 @@ class Data:
 
         try:
             # Sanitização das entradas
-            consulta.usina = consulta.usina.replace("'", "").replace(";", "").replace("=", "")
-            consulta.coluna = [col.replace("'", "").replace(";", "").replace("=", "") for col in consulta.coluna]
-            consulta.periodo = consulta.periodo.replace("'", "").replace(";", "").replace("=", "")
-            consulta.data_inicio = consulta.data_inicio.replace("'", "").replace(";", "").replace("=", "")
-            consulta.data_fim = consulta.data_fim.replace("'", "").replace(";", "").replace("=", "")
+            consulta = consulta.dict()
+            for key, value in consulta.items():
+                if isinstance(value, list):
+                    consulta[key] = [str(v).replace("'", "").replace(";", "").replace("=", "") for v in value]
+                else:
+                    consulta[key] = str(value).replace("'", "").replace(";", "").replace("=", "")
 
             return consulta
 
