@@ -29,6 +29,7 @@ rotas = Rotas()
 Definição data que torna os dados da produção de energia acumulada
 '''
 app.post("/data/producao_acumulada")(rotas.get_data)
+app.post("/consult")(rotas.get_values)
 app.post("/columns")(rotas.get_columns)
 
 
@@ -97,7 +98,8 @@ def test_api():
             # imprimir o status code
             if response.status_code == 200:
                 # imprimir a mensagem de requisição bem sucedida
-                imprimir_resposta(response)
+                # imprimir_resposta(response)
+                print(response.text)
 
             else:
                 print(f"Erro ao fazer a requisição: {response.text}")
@@ -135,20 +137,64 @@ def test_api():
         print(f'Tempo de execução: {time.time() - inicio} segundos')
         print('---' * 20)
 
+
+    def test_values(time, url):
+        ''' Testar a API para a coluna acumulador_energia '''
+        url = url.replace('rota', 'consult')
+
+        # período de teste
+        periodo = ['hour', 'day', 'week', 'month', 'year']
+
+        for p in periodo:
+            # imprimir o período de teste
+            print('###' * 20)
+            print(f'Testando o período: {p}')
+            print(url)
+            print('###' * 20)
+            # corpo da requisição
+            body = {
+                "usina": "jasp_test",
+                "coluna": ["jusante"],
+                "periodo": p,
+                "data_inicio": "24/04/2024",
+                "data_fim": "28/04/2024",
+                "token": "123456",
+            }
+
+            # cabeçalho da requisição
+            headers = {'Content-type': 'application/json'}
+
+            # fazer a requisição POST
+            response = requests.post(url, data=json.dumps(body), headers=headers)
+
+            # imprimir o status code
+            if response.status_code == 200:
+                # imprimir a mensagem de requisição bem sucedida
+                # imprimir_resposta(response)
+                print(response.text)
+
+            else:
+                print(f"Erro ao fazer a requisição: {response.text}")
+            print(f'Tempo de execução: {time.time() - inicio} segundos')
+            print('---' * 20)
+
     # Iniciar o tempo de execução=========================
     inicio = time.time()
     print('---' * 20)
     print('Iniciando a função de teste da API')
 
     # url da API
-    url = 'https://fastapi-production-8d7e.up.railway.app/data/producao_acumulada'
-    # url = 'http://127.0.0.1:8000/rota'
+    # url = 'https://fastapi-production-8d7e.up.railway.app/data/producao_acumulada'
+    url = 'http://127.0.0.1:8000/rota'
 
     # Testar a API para a coluna acumulador_energia
     test_acumulador_energia(time, url)
 
     # Testar a API para a coluna columns
     # test_columns(time, url)
+
+    # Testar a API para a coluna values
+    # test_values(time, url)
 
 
 
@@ -201,10 +247,71 @@ if __name__ == "__main__":
 
 
 
-
-
-
-
+# O formato de resposta atual da API:
+# {
+#     "status":"ok",
+#     "df":{
+#             "ug01_acumulador_energia":
+#                                     {
+#                                         "2024-04-25T00:00:00":3561.247,
+#                                         "2024-04-26T00:00:00":3561.247
+#                                     },
+#             "ug02_acumulador_energia":
+#                                     {
+#                                         "2024-04-25T00:00:00":3616.197,
+#                                         "2024-04-26T00:00:00":3561.247
+#                                     },
+#     }
+# }
+#
+# O formato requerido:
+#
+# se eu precisar acrescentar outros dias ou Unidades Geradoras (UGs), como seria a estrutura do JSON?
+# {
+#   "status": "ok",
+#   "df": [
+#         {
+#           "geradora": "UG01",
+#           "leitura": "2024-04-25T00:00:00",
+#           "acumulado": 42.954,
+#         },
+#         {
+#           "geradora": "UG01",
+#           "leitura": "2024-04-26T00:00:00",
+#           "acumulado": 42.954,
+#         },
+#         {
+#           "geradora": "UG02",
+#           "leitura": "2024-04-25T00:00:00",
+#           "acumulado": 42.954
+#         },
+#        {
+#           "geradora": "UG02",
+#           "leitura": "2024-04-26T00:00:00",
+#           "acumulado": 42.954,
+#        },
+#   ]
+# }
+#
+# Se precisar inserir mais valores de periodos diarios, semanais, mensais e anuais, como seria a estrutura do JSON?
+#
+# {
+#   "status": "ok",
+#   "df": [
+#     {
+#       "geradora": "UG01",
+#       "leitura": "2024-04-25T00:00:00",
+#       "acumulado": 42.954
+#     },
+#     {
+#       "geradora": "UG02",
+#       "leitura": "2024-04-25T00:00:00",
+#       "acumulado": 42.954
+#     }
+#   ]
+# }
+#
+# É necessário fazer a conversão do formato atual para o formato requerido?
 
 
 

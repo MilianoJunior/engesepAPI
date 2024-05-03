@@ -114,6 +114,24 @@ class Rotas:
             return HTTPException(status_code=404, detail=str(e),
                                  headers={"status": f"Erro ao processar a consulta: {e}"})
 
+
+    async def get_values(self,consulta: Consulta):
+        ''' Retorna os valores da tabela solicitada '''
+
+        try:
+            if not self.auth.verify_password(self.auth.hash_password(self.data.token), consulta.token):
+                return HTTPException(status_code=401, detail="Token inválido",
+                                        headers={"status": "Token inválido"})
+
+            print('1 - Consulta - ',consulta)
+            values = self.data.get_data(consulta)
+            return values
+
+        except Exception as e:
+            print('2 - Consulta - ERRO: ',consulta)
+            return HTTPException(status_code=404, detail=str(e),
+                                 headers={"status": f"Erro ao processar a consulta: {e}"})
+
     async def get_columns(self,column: Column):
         ''' Retorna as colunas da tabela solicitada '''
 

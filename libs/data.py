@@ -24,10 +24,93 @@ class Data:
         self.periodos = {
                         'day': 'D',
                         'week': 'W',
-                        'month': 'M',
-                        'year': 'Y',
-                        'hour': 'H',
+                        'month': 'ME',
+                        'year': 'YE',
+                        'hour': 'h',
                     }
+
+    def converter_dicionario(self, original):
+        ''' Converte o dicionário de leituras em um formato mais legível '''
+
+        resultado = {"status": original["status"], "df": []}
+        cont = 0
+        for key, value in original["df"].items():
+            # Extração do código da geradora
+            cont += 1
+            if 'ug' in key:
+                geradora = key.split('_')[0].upper()
+            else:
+                geradora = 'UG0'+str(cont)
+            # print('Geradora: ',geradora)
+
+            # Cria uma lista de leituras; aqui estamos assumindo que value é um dicionário de leituras
+            leituras = []
+            for data, acumulado in value.items():
+                leituras.append({"leitura": data, "acumulado": acumulado})
+
+            # Adiciona a entrada da geradora no resultado
+            resultado["df"].append({"geradora": geradora, "leituras": leituras})
+        return resultado
+
+    def get_data(self, consulta):
+        ''' Retorna os valores das colunas solicitadas '''
+
+        try:
+            # substituir a string do período pelo valor correspondente
+            consulta.periodo = self.periodos.get(consulta.periodo, 'D')
+
+            # Sanitização das entradas
+            consulta = self.sanitize(consulta)
+
+            # consultar as colunas que existem na tabela
+            query_columns = f"SHOW COLUMNS FROM {consulta['usina']};"
+
+            # executar a query com a função fetch_all
+            df_columns = self.connection.fetch_all(query_columns)
+
+            # verificar se o DataFrame está vazio
+            self.is_empty(df_columns)
+
+            # declara variável para armazenar as colunas
+            columns = 'data_hora,'
+
+            # verificar se a coluna solicitada existe
+            for column in df_columns['Field'].values:
+                if any([name in column for name in consulta['coluna']]):
+                    columns += column + ','
+
+            # tratar a string columns
+            columns = columns[:-1]
+
+            # criar a query
+            query = f"SELECT {columns} FROM {consulta['usina']} WHERE data_hora BETWEEN '{consulta['data_inicio']}' AND '{consulta['data_fim']}';"
+
+            # executar a query com a função fetch_all
+            df = self.connection.fetch_all(query)
+
+            # verificar se o DataFrame está vazio
+            self.is_empty(df)
+
+            # converter a coluna data_hora para datetime
+            df['data_hora'] = pd.to_datetime(df['data_hora'])
+
+            # data_hora como índice
+            df.set_index('data_hora', inplace=True)
+
+            # resample para o período desejado
+            df_producao = df.resample(consulta['periodo']).mean().round(3)
+
+            # Substituir valores NaN antes de converter o DataFrame em um dicionário
+            df_producao.fillna(0, inplace=True)
+
+            # converter o DataFrame em um dicionário
+            converter_dicionario = self.converter_dicionario({"status": "ok", "df": df_producao.to_dict()})
+
+            # return {"status": "ok", "df": df_producao.to_dict()}
+            return converter_dicionario
+
+        except Exception as e:
+            raise Exception(f"Erro: {e}")
 
     def process(self, consulta):
         ''' Processa os dados da consulta '''
@@ -42,19 +125,15 @@ class Data:
 
             # consultar as colunas que existem na tabela
             query_columns = f"SHOW COLUMNS FROM {consulta['usina']};"
-            # print('1- ',query_columns)
 
             # executar a query com a função fetch_all
             df_columns = self.connection.fetch_all(query_columns)
-
-            # print('2- ',df_columns)
 
             # verificar se o DataFrame está vazio
             self.is_empty(df_columns)
 
             # declara variável para armazenar as colunas
             columns = 'data_hora,'
-            # print('3- ',consulta['coluna'], type(consulta['coluna']))
 
             # verificar se a coluna solicitada existe
             for column in df_columns['Field'].values:
@@ -66,7 +145,6 @@ class Data:
 
             # criar a query
             query = f"SELECT {columns} FROM {consulta['usina']} WHERE data_hora BETWEEN '{consulta['data_inicio']}' AND '{consulta['data_fim']}';"
-            # print(' Query: ',query)
 
             # executar a query com a função fetch_all
             df = self.connection.fetch_all(query)
@@ -94,9 +172,11 @@ class Data:
             # verificar se o DataFrame de produção está vazio
             self.is_empty(df_producao)
 
-            # retornar o DataFrame de produção
-            return {"status": "ok", "df": df_producao.to_dict()}
+            converter_dicionario = self.converter_dicionario({"status": "ok", "df": df_producao.to_dict()})
 
+            # retornar o DataFrame de produção
+            # return {"status": "ok", "df": df_producao.to_dict()}
+            return converter_dicionario
         except Exception as e:
             raise Exception(f"Erro ao processar os dados da consulta {e}")
 
