@@ -24,9 +24,9 @@ class Data:
         self.periodos = {
                         'day': 'D',
                         'week': 'W',
-                        'month': 'ME',
-                        'year': 'YE',
-                        'hour': 'h',
+                        'month': 'M',
+                        'year': 'Y',
+                        'hour': 'H',
                     }
 
     def converter_dicionario(self, original):
