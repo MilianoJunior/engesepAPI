@@ -39,6 +39,7 @@ Para diferentes períodos de tempo
 
 '''
 app.post("/data/producao_acumulada")(rotas.get_data)
+app.post("/historico")(rotas.get_history)
 app.post("/consult")(rotas.get_values)
 app.post("/columns")(rotas.get_columns)
 

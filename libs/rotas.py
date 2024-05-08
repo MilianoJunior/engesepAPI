@@ -95,6 +95,22 @@ class Rotas:
         self.data = Data()
         self.auth = Crypto()
 
+
+    async def get_history(self,consulta: Consulta):
+        ''' Retorna o histórico de dados da usina solicitada '''
+
+        try:
+            if not self.auth.verify_password(self.auth.hash_password(self.data.token), consulta.token):
+                return HTTPException(status_code=401, detail="Token inválido",
+                                        headers={"status": "Token inválido"})
+
+            historico = self.data.get_historico(consulta)
+            return historico
+
+        except Exception as e:
+            return HTTPException(status_code=404, detail=str(e),
+                                 headers={"status": f"Erro ao processar a consulta: {e}"})
+
     async def get_data(self, consulta: Consulta):
         ''' Retorna os dados do mês solicitado '''
 

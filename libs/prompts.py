@@ -90,3 +90,43 @@ pode criar uma função que converta o dicionário para o formato desejado?
 
 
 '''
+
+'''
+
+Tenho o seguinte dicionário:
+
+{
+    "status":"ok",
+    "df":{
+            "ug01_acumulador_energia":{"2024-04-25T00:00:00":1744.76,"2024-04-26T00:00:00":3563.13},
+            "ug02_acumulador_energia":{"2024-04-25T00:00:00":1820.297,"2024-04-26T00:00:00":3617.91},
+            "ug03_acumulador_energia":{"2024-04-25T00:00:00":1755.511,"2024-04-26T00:00:00":3586.81},
+            "ug04_acumulador_energia":{"2024-04-25T00:00:00":1862.897,"2024-04-26T00:00:00":3697.36}
+            }
+}
+
+
+Mas preciso alterar para o seguinte formato:
+
+{[
+  {
+    "leitura": "2024-04-25T00:00:00",
+    "acumulado_ug01": 3561.247,
+    "acumulado_ug02": 3561.247,
+    "acumulado_ug03": 3561.247,
+    "acumulado_ug04": 3561.247
+  },
+  {
+    "leitura": "2024-04-26T00:00:00",
+    "acumulado_ug01": 3761.247,
+    "acumulado_ug02": 3761.247,
+    "acumulado_ug03": 3761.247,
+    "acumulado_ug04": 3761.247
+  }
+]}
+
+pode criar uma função que converta o dicionário para o formato desejado?
+
+[{"leitura":"2024-04-24T00:00:00","acumulado_acumulador":164.708},{"leitura":"2024-04-25T00:00:00","acumulado_acumulador":196.808},{"leitura":"2024-04-26T00:00:00","acumulado_acumulador":238.472},{"leitura":"2024-04-27T00:00:00","acumulado_acumulador":274.603}]
+
+'''

@@ -52,6 +52,95 @@ class Data:
             resultado["df"].append({"geradora": geradora, "leituras": leituras})
         return resultado
 
+    def converter_historico(self, dados):
+        # Pegar as chaves de cada unidade geradora
+        unidades = list(dados['df'].keys())
+
+        # Pegar todas as datas disponíveis nos dados
+        datas = list(dados['df'][unidades[0]].keys())
+
+        # Inicializar lista para os dados convertidos
+        dados_convertidos = []
+
+        # Iterar sobre cada data
+        for data in datas:
+            # Inicializar um dicionário com a data de leitura e converte para string
+            entrada = {"leitura": data.strftime('%Y-%m-%dT%H:%M:%S')}
+
+            # Adicionar o valor acumulado de cada unidade
+            for unidade in unidades:
+                nome_chave = f"acumulado_{unidade.split('_')[0]}"
+                entrada[nome_chave] = dados['df'][unidade][data]
+
+            # Adicionar a entrada convertida na lista
+            dados_convertidos.append(entrada)
+
+        # Retornar a lista no formato desejado
+        return dados_convertidos
+
+    def get_historico(self, consulta):
+
+        try:
+
+            # substituir a string do período pelo valor correspondente
+            consulta.periodo = self.periodos.get(consulta.periodo, 'D')
+
+            # Sanitização das entradas
+            consulta = self.sanitize(consulta)
+
+            # consultar as colunas que existem na tabela
+            query_columns = f"SHOW COLUMNS FROM {consulta['usina']};"
+
+            # executar a query com a função fetch_all
+            df_columns = self.connection.fetch_all(query_columns)
+
+            # verificar se o DataFrame está vazio
+            self.is_empty(df_columns)
+
+            # declara variável para armazenar as colunas
+            columns = 'data_hora,'
+
+            # verificar se a coluna solicitada existe
+            for column in df_columns['Field'].values:
+                if any([name in column for name in consulta['coluna']]):
+                    columns += column + ','
+
+            # tratar a string columns
+            columns = columns[:-1]
+
+            # criar a query
+            query = f"SELECT {columns} FROM {consulta['usina']} WHERE data_hora BETWEEN '{consulta['data_inicio']}' AND '{consulta['data_fim']}';"
+
+            # executar a query com a função fetch_all
+            df = self.connection.fetch_all(query)
+
+            # verificar se o DataFrame está vazio
+            self.is_empty(df)
+
+            # converter a coluna data_hora para datetime
+            df['data_hora'] = pd.to_datetime(df['data_hora'])
+
+            # data_hora como índice
+            df.set_index('data_hora', inplace=True)
+
+            # resample para o período desejado
+            df_producao = df.resample(consulta['periodo']).mean().round(3)
+
+            # Substituir valores NaN antes de converter o DataFrame em um dicionário
+            df_producao.fillna(0, inplace=True)
+
+            # converter o DataFrame em um dicionário
+            converter_dicionario = self.converter_historico({"status": "ok", "df": df_producao.to_dict()})
+
+            # print(converter_dicionario)
+
+            return converter_dicionario
+
+        except Exception as e:
+            raise Exception(f"Erro: {e}")
+
+
+
     def get_data(self, consulta):
         ''' Retorna os valores das colunas solicitadas '''
 
@@ -275,3 +364,50 @@ O que a mídia e o governo faz é criar narrativas para manipular a população.
 abuso de poder que se torna insustentável. 
 '''
 
+'''
+Quer mudar a resposta do endpoint:https://fastapi-production-8d7e.up.railway.app/data/producao_acumulada
+De:
+{
+    "status":"ok",
+    "df":[
+            {
+                 "geradora":"UG01",
+                 "leituras":[
+                                {
+                                    "leitura":"2024-04-28T00:00:00",
+                                    "acumulado":3562.337
+                                }
+                            ]
+            },
+            {
+                "geradora":"UG02",
+                "leituras":[
+                                {
+                                    "leitura":"2024-04-28T00:00:00",
+                                    "acumulado":3616.877
+                                }
+                            ]
+            }
+        ]
+}
+Para:
+[
+  {
+    "leitura": "2024-04-25T00:00:00",
+    "acumulado_ug01": 3561.247,
+    "acumulado_ug02": 3561.247,
+    "acumulado_ug03": 3561.247,
+    "acumulado_ug04": 3561.247
+  },
+  {
+    "leitura": "2024-04-26T00:00:00",
+    "acumulado_ug01": 3761.247,
+    "acumulado_ug02": 3761.247,
+    "acumulado_ug03": 3761.247,
+    "acumulado_ug04": 3761.247
+  }
+]
+
+
+
+'''
