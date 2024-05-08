@@ -41,7 +41,6 @@ class Data:
                 geradora = key.split('_')[0].upper()
             else:
                 geradora = 'UG0'+str(cont)
-            # print('Geradora: ',geradora)
 
             # Cria uma lista de leituras; aqui estamos assumindo que value é um dicionário de leituras
             leituras = []
@@ -56,6 +55,7 @@ class Data:
         # Pegar as chaves de cada unidade geradora
         unidades = list(dados['df'].keys())
 
+
         # Pegar todas as datas disponíveis nos dados
         datas = list(dados['df'][unidades[0]].keys())
 
@@ -66,10 +66,15 @@ class Data:
         for data in datas:
             # Inicializar um dicionário com a data de leitura e converte para string
             entrada = {"leitura": data.strftime('%Y-%m-%dT%H:%M:%S')}
+            ugs = 0
 
             # Adicionar o valor acumulado de cada unidade
             for unidade in unidades:
-                nome_chave = f"acumulado_{unidade.split('_')[0]}"
+                if 'ug' in unidade:
+                    nome_chave = f"acumulado_{unidade.split('_')[0]}"
+                else:
+                    ugs += 1
+                    nome_chave = f"acumulado_ug0{ugs}"
                 entrada[nome_chave] = dados['df'][unidade][data]
 
             # Adicionar a entrada convertida na lista
