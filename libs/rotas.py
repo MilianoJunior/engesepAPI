@@ -108,8 +108,7 @@ class Rotas:
             return historico
 
         except Exception as e:
-            return HTTPException(status_code=404, detail=str(e),
-                                 headers={"status": f"Erro ao processar a consulta: {e}"})
+            return {"status": f"Erro ao processar a consulta: {e}", "df": []}
 
     async def get_data(self, consulta: Consulta):
         ''' Retorna os dados do mês solicitado '''
@@ -127,8 +126,9 @@ class Rotas:
 
         except Exception as e:
             print('1 - GET DATA - ERRO:  ',e)
-            return HTTPException(status_code=404, detail=str(e),
-                                 headers={"status": f"Erro ao processar a consulta: {e}"})
+            return {"status": f"Erro ao processar a consulta: {e}", "df": []}
+            # return HTTPException(status_code=404, detail=str(e),
+            #                      headers={"status": f"Erro ao processar a consulta: {e}"})
 
 
     async def get_values(self,consulta: Consulta):
@@ -145,8 +145,9 @@ class Rotas:
 
         except Exception as e:
             print('2 - Consulta - ERRO: ',consulta)
-            return HTTPException(status_code=404, detail=str(e),
-                                 headers={"status": f"Erro ao processar a consulta: {e}"})
+            return {"status": f"Erro ao processar a consulta: {e}", "df": []}
+            # return HTTPException(status_code=404, detail=str(e),
+            #                      headers={"status": f"Erro ao processar a consulta: {e}"})
 
     async def get_columns(self,column: Column):
         ''' Retorna as colunas da tabela solicitada '''
@@ -161,5 +162,6 @@ class Rotas:
 
         except Exception as e:
             print('2 - Column - ERRO: ', column)
-            return HTTPException(status_code=404, detail=str(e),
-                                 headers={"status": f"Erro ao processar a consulta: {e}"})
+            return {"status": f"Erro ao processar a consulta: {e}", "df": []}
+            # return HTTPException(status_code=404, detail=str(e),
+            #                      headers={"status": f"Erro ao processar a consulta: {e}"})

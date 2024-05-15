@@ -85,8 +85,8 @@ def test_api():
                 "usina": "jasp_test",
                 "coluna": ["acumulador_energia"],
                 "periodo": p,
-                "data_inicio": "24/04/2024",
-                "data_fim": "26/04/2024",
+                "data_inicio": "24/01/2021",
+                "data_fim": "28/01/2021",
                 "token": "123456",
             }
 
@@ -154,11 +154,11 @@ def test_api():
             print('###' * 20)
             # corpo da requisição
             body = {
-                "usina": "jasp_test",
-                "coluna": ["jusante"],
+                "usina": "cgh_aparecida",
+                "coluna": ["acumulador_energia"],
                 "periodo": p,
-                "data_inicio": "24/04/2024",
-                "data_fim": "28/04/2024",
+                "data_inicio": "24/01/2021",
+                "data_fim": "28/01/2021",
                 "token": "123456",
             }
 
@@ -197,8 +197,8 @@ def test_api():
                 "usina": "cgh_aparecida",
                 "coluna": ["acumulador_energia"],
                 "periodo": p,
-                "data_inicio": "24/04/2024",
-                "data_fim": "28/04/2024",
+                "data_inicio": "24/01/2021",
+                "data_fim": "28/01/2021",
                 "token": "123456",
             }
 
@@ -229,16 +229,16 @@ def test_api():
     url = 'http://127.0.0.1:8000/rota'
     # url = 'https://fastapi-production-8d7e.up.railway.app/rota'
     # Testar a API para a coluna acumulador_energia
-    # test_acumulador_energia(time, url)
+    test_acumulador_energia(time, url)
 
     # Testar a API para a coluna columns
     # test_columns(time, url)
     print('####################' * 20)
     # Testar a API para a coluna values
     # test_values(time, url)
-    print('####################' * 20)
+    # print('####################' * 20)
     # Testar a API para a coluna historico
-    test_historico(time, url)
+    # test_historico(time, url)
 
 
 
