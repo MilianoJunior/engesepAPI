@@ -82,7 +82,7 @@ def test_api():
             print('###' * 20)
             # corpo da requisição
             body = {
-                "usina": "jasp_test",
+                "usina": "cgh_aparecida",
                 "coluna": ["acumulador_energia"],
                 "periodo": p,
                 "data_inicio": "24/01/2021",
@@ -226,8 +226,8 @@ def test_api():
 
     # url da API
     # url = 'https://fastapi-production-8d7e.up.railway.app/data/producao_acumulada'
-    # url = 'http://127.0.0.1:8000/rota'
-    url = 'https://fastapi-production-8d7e.up.railway.app/rota'
+    url = 'http://127.0.0.1:8000/rota'
+    # url = 'https://fastapi-production-8d7e.up.railway.app/rota'
     # Testar a API para a coluna acumulador_energia
     test_acumulador_energia(time, url)
 

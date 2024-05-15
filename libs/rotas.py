@@ -108,7 +108,7 @@ class Rotas:
             return historico
 
         except Exception as e:
-            return {[]}
+            return []
 
     async def get_data(self, consulta: Consulta):
         ''' Retorna os dados do mês solicitado '''
@@ -124,7 +124,7 @@ class Rotas:
 
         except Exception as e:
             print('1 - GET DATA - ERRO:  ',e)
-            return {[]}
+            return []
             # return HTTPException(status_code=404, detail=str(e),
             #                      headers={"status": f"Erro ao processar a consulta: {e}"})
 
@@ -141,7 +141,7 @@ class Rotas:
 
         except Exception as e:
             print('2 - Consulta - ERRO: ',consulta)
-            return {[]}
+            return []
             # return HTTPException(status_code=404, detail=str(e),
             #                      headers={"status": f"Erro ao processar a consulta: {e}"})
 
@@ -158,6 +158,6 @@ class Rotas:
 
         except Exception as e:
             print('2 - Column - ERRO: ', column)
-            return {[]}
+            return []
             # return HTTPException(status_code=404, detail=str(e),
             #                      headers={"status": f"Erro ao processar a consulta: {e}"})
