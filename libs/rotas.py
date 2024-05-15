@@ -108,15 +108,13 @@ class Rotas:
             return historico
 
         except Exception as e:
-            return {"status": f"Erro ao processar a consulta: {e}", "df": []}
+            return {[]}
 
     async def get_data(self, consulta: Consulta):
         ''' Retorna os dados do mês solicitado '''
 
         try:
-            print('1 - Consulta - ',consulta)
             if not self.auth.verify_password(self.auth.hash_password(self.data.token), consulta.token):
-                print('1 - Senha incorreta - ',consulta.token)
                 return HTTPException(status_code=401, detail="Token inválido",
                                         headers={"status": "Token inválido"})
 
@@ -126,7 +124,7 @@ class Rotas:
 
         except Exception as e:
             print('1 - GET DATA - ERRO:  ',e)
-            return {"status": f"Erro ao processar a consulta: {e}", "df": []}
+            return {[]}
             # return HTTPException(status_code=404, detail=str(e),
             #                      headers={"status": f"Erro ao processar a consulta: {e}"})
 
@@ -138,14 +136,12 @@ class Rotas:
             if not self.auth.verify_password(self.auth.hash_password(self.data.token), consulta.token):
                 return HTTPException(status_code=401, detail="Token inválido",
                                         headers={"status": "Token inválido"})
-
-            print('1 - Consulta - ',consulta)
             values = self.data.get_data(consulta)
             return values
 
         except Exception as e:
             print('2 - Consulta - ERRO: ',consulta)
-            return {"status": f"Erro ao processar a consulta: {e}", "df": []}
+            return {[]}
             # return HTTPException(status_code=404, detail=str(e),
             #                      headers={"status": f"Erro ao processar a consulta: {e}"})
 
@@ -162,6 +158,6 @@ class Rotas:
 
         except Exception as e:
             print('2 - Column - ERRO: ', column)
-            return {"status": f"Erro ao processar a consulta: {e}", "df": []}
+            return {[]}
             # return HTTPException(status_code=404, detail=str(e),
             #                      headers={"status": f"Erro ao processar a consulta: {e}"})
