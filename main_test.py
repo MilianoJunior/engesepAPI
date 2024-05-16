@@ -13,6 +13,7 @@ import requests
 import json
 import os
 import time
+from libs.email import main
 
 '''
 Definição da aplicação FastAPI
@@ -223,13 +224,13 @@ def test_api():
     inicio = time.time()
     print('---' * 20)
     print('Iniciando a função de teste da API')
-
+    main()
     # url da API
     # url = 'https://fastapi-production-8d7e.up.railway.app/data/producao_acumulada'
-    url = 'http://127.0.0.1:8000/rota'
+    # url = 'http://127.0.0.1:8000/rota'
     # url = 'https://fastapi-production-8d7e.up.railway.app/rota'
-    # Testar a API para a coluna acumulador_energia
-    test_acumulador_energia(time, url)
+    # # Testar a API para a coluna acumulador_energia
+    # test_acumulador_energia(time, url)
 
     # Testar a API para a coluna columns
     # test_columns(time, url)

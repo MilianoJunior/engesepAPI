@@ -12,6 +12,9 @@ import requests
 import json
 import os
 import time
+from apscheduler.schedulers.background import BackgroundScheduler
+from datetime import datetime, timedelta
+import threading
 
 '''
 Definição da aplicação FastAPI
@@ -44,12 +47,43 @@ app.post("/consult")(rotas.get_values)
 app.post("/columns")(rotas.get_columns)
 
 
+def evento():
+    ''' Função para enviar email todos os dias as 08:00 '''
+
+    # importar a função main do arquivo email.py -  A lógica está testada e enviando email corretamente
+    from libs.email import main
+    print('Evento disparado as 13:40')
+
+    main()
+
+def start_scheduler():
+    ''' Iniciar o agendador APScheduler '''
+    scheduler = BackgroundScheduler()
+    # Agendar a função evento para ser executada todos os dias às 08:00
+    scheduler.add_job(evento, 'cron', hour=13, minute=48)
+    scheduler.start()
+
+    # Garantir que o agendador pare ao desligar o programa
+    try:
+        while True:
+            time.sleep(2)
+    except (KeyboardInterrupt, SystemExit):
+        scheduler.shutdown()
+
+
+
 # 12 - Iniciar o servidor FastAPI
 def run_uvicorn():
     ''' Iniciar o servidor FastAPI '''
 
     # ler a variável de ambiente HOST
     host = os.getenv("HOST", '0.0.0.0')
+
+    # iniciar agendador de tarefas em um thread separado
+    scheduler_thread = threading.Thread(target=start_scheduler)
+    scheduler_thread.start()
+
+    print('Servidor iniciado')
 
     # iniciar o servidor FastAPI na porta 8000
     uvicorn.run("main:app", host=host, port=8000, log_level="info")
