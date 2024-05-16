@@ -60,7 +60,7 @@ def start_scheduler():
     ''' Iniciar o agendador APScheduler '''
     scheduler = BackgroundScheduler()
     # Agendar a função evento para ser executada todos os dias às 08:00
-    scheduler.add_job(evento, 'cron', hour=13, minute=48)
+    scheduler.add_job(evento, 'cron', hour=15, minute=22)
     scheduler.start()
 
     # Garantir que o agendador pare ao desligar o programa
