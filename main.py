@@ -52,7 +52,7 @@ def evento():
 
     # importar a função main do arquivo email.py -  A lógica está testada e enviando email corretamente
     from libs.email import main
-    print('Evento disparado as 13:40')
+    print('Evento disparado as 15:10')
 
     main()
 
