@@ -52,6 +52,8 @@ class Data:
         return resultado
 
     def converter_historico(self, dados):
+        ''' Converte o dicionário de leituras em um formato mais legível '''
+
         # Pegar as chaves de cada unidade geradora
         unidades = list(dados['df'].keys())
 
@@ -82,6 +84,60 @@ class Data:
 
         # Retornar a lista no formato desejado
         return dados_convertidos
+
+    def get_production(self, consulta):
+        ''' Retorna os valores das colunas solicitadas '''
+
+        try:
+            # Sanitização das entradas
+            consulta = self.sanitize(consulta)
+
+            # consultar as colunas que existem na tabela
+            query_columns = f"SHOW COLUMNS FROM {consulta['usina']};"
+
+            # executar a query com a função fetch_all
+            df_columns = self.connection.fetch_all(query_columns)
+
+            # verificar se o DataFrame está vazio
+            self.is_empty(df_columns)
+
+            # declara variável para armazenar as colunas
+            columns = 'data_hora,'
+
+            # verificar se a coluna solicitada existe
+            for column in df_columns['Field'].values:
+                if 'energia' in column:
+                    columns += column + ','
+
+            # tratar a string columns
+            columns = columns[:-1]
+
+            # criar a query que retorna os últimos valores de produção diferentes de zero
+            query = f"SELECT {columns} FROM {consulta['usina']} WHERE data_hora IS NOT NULL ORDER BY data_hora DESC LIMIT 1;"
+
+            # executar a query com a função fetch_all
+            df = self.connection.fetch_all(query)
+
+            # verificar se o DataFrame está vazio
+            self.is_empty(df)
+
+            # converter a coluna data_hora para datetime
+            df['data_hora'] = pd.to_datetime(df['data_hora'])
+
+            # data_hora como índice
+            df.set_index('data_hora', inplace=True)
+
+            print(df.columns)
+            # Somar os valores de produção de energia de todas as unidades geradoras em uma única coluna
+            df['producao_total'] = df[[column for column in df.columns if 'energia' in column]].sum(axis=1)
+            print(df.values[0])
+
+            # converter o DataFrame em um dicionário
+            return {"status": "ok", "df": [{ "leitura": df.index[0].strftime('%Y-%m-%dT%H:%M:%S') ,"total": round(df['producao_total'].values[0],3)}]}
+
+
+        except Exception as e:
+            raise Exception(f"Erro: {e}")
 
     def get_historico(self, consulta):
 

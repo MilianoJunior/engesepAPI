@@ -45,7 +45,7 @@ app.post("/data/producao_acumulada")(rotas.get_data)
 app.post("/historico")(rotas.get_history)
 app.post("/consult")(rotas.get_values)
 app.post("/columns")(rotas.get_columns)
-
+app.post("/data/producao_total")(rotas.get_production)
 
 def evento():
     ''' Função para enviar email todos os dias as 08:00 '''

@@ -33,6 +33,7 @@ app.post("/data/producao_acumulada")(rotas.get_data)
 app.post("/historico")(rotas.get_history)
 app.post("/consult")(rotas.get_values)
 app.post("/columns")(rotas.get_columns)
+app.post("/data/producao_total")(rotas.get_production)
 
 
 # 12 - Iniciar o servidor FastAPI
@@ -220,26 +221,56 @@ def test_api():
             print(f'Tempo de execução: {time.time() - inicio} segundos')
             print('---' * 20)
 
+    def test_producao_total(time, url):
+        ''' Testar a API para a coluna acumulador_energia '''
+
+        url = url.replace('rota', 'data/producao_total')
+
+        body = {
+                "usina": "cgh_aparecida",
+                "token": "123456",
+        }
+
+        # cabeçalho da requisição
+        headers = {'Content-type': 'application/json'}
+
+        # fazer a requisição POST
+        response = requests.post(url, data=json.dumps(body), headers=headers)
+
+        # imprimir o status code
+        if response.status_code == 200:
+            # imprimir a mensagem de requisição bem sucedida
+            # imprimir_resposta(response)
+            print(response.text)
+
+        else:
+            print(f"Erro ao fazer a requisição: {response.text}")
+        print(f'Tempo de execução: {time.time() - inicio} segundos')
+        print('---' * 20)
+
     # Iniciar o tempo de execução=========================
     inicio = time.time()
     print('---' * 20)
     print('Iniciando a função de teste da API')
-    main()
+    # main()  # Enviar email
     # url da API
     # url = 'https://fastapi-production-8d7e.up.railway.app/data/producao_acumulada'
-    # url = 'http://127.0.0.1:8000/rota'
+    url = 'http://127.0.0.1:8000/rota'
     # url = 'https://fastapi-production-8d7e.up.railway.app/rota'
     # # Testar a API para a coluna acumulador_energia
     # test_acumulador_energia(time, url)
 
     # Testar a API para a coluna columns
     # test_columns(time, url)
-    print('####################' * 20)
+    # print('####################' * 20)
     # Testar a API para a coluna values
     # test_values(time, url)
     # print('####################' * 20)
     # Testar a API para a coluna historico
     # test_historico(time, url)
+    print('####################' * 20)
+    # Testar a API para a coluna producao_total
+    test_producao_total(time, url)
 
 
 
@@ -286,7 +317,6 @@ if __name__ == "__main__":
     fim = time.time()
     print('---' * 20)
     print(f"Tempo de execução: {fim - inicio} segundos")
-
 
 
 

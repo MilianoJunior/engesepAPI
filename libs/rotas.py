@@ -47,6 +47,26 @@ class Consulta(BaseModel):
             raise ValueError('Nome da usina inválido')
         return v
 
+class Production(BaseModel):
+    """
+    Esta rota retorna os dados de produção de energia para todas as UG's de uma usina específica.
+
+    Parâmetros:
+    - `usina`: Uma string `Usina` que contém o nome da usina específicada.
+    - `token`: Um token de autenticação.
+
+    Retorna:
+    - Um objeto JSON contendo os dados de produção de energia para todas as UG's.
+    """
+    usina: str
+    token: str
+
+    @validator('usina')
+    def validar_nome_usina(cls, v):
+        if not re.match(r"^[a-zA-Z0-9_]+$", v):
+            raise ValueError('Nome da usina inválido')
+        return v
+
 class Column(BaseModel):
 
     usina: str
@@ -118,7 +138,6 @@ class Rotas:
                 return HTTPException(status_code=401, detail="Token inválido",
                                         headers={"status": "Token inválido"})
 
-
             dados = self.data.process(consulta)
             return dados
 
@@ -158,6 +177,23 @@ class Rotas:
 
         except Exception as e:
             print('2 - Column - ERRO: ', column)
+            return []
+            # return HTTPException(status_code=404, detail=str(e),
+            #                      headers={"status": f"Erro ao processar a consulta: {e}"})
+
+    async def get_production(self, consulta: Production):
+        ''' Retorna os dados da produção total '''
+
+        try:
+            if not self.auth.verify_password(self.auth.hash_password(self.data.token), consulta.token):
+                return HTTPException(status_code=401, detail="Token inválido",
+                                        headers={"status": "Token inválido"})
+
+            production = self.data.get_production(consulta)
+            return production
+
+        except Exception as e:
+            print('3 - Produção - ERRO: ',consulta)
             return []
             # return HTTPException(status_code=404, detail=str(e),
             #                      headers={"status": f"Erro ao processar a consulta: {e}"})
