@@ -85,7 +85,7 @@ class Data:
         # Retornar a lista no formato desejado
         return dados_convertidos
 
-    def get_production(self, consulta):
+    def production_all(self, consulta):
         ''' Retorna os valores das colunas solicitadas '''
 
         try:
@@ -139,10 +139,9 @@ class Data:
         except Exception as e:
             raise Exception(f"Erro: {e}")
 
-    def get_historico(self, consulta):
+    def history(self, consulta):
 
         try:
-
             # substituir a string do período pelo valor correspondente
             consulta.periodo = self.periodos.get(consulta.periodo, 'D')
 
@@ -184,8 +183,17 @@ class Data:
             # data_hora como índice
             df.set_index('data_hora', inplace=True)
 
-            # resample para o período desejado
-            df_producao = df.resample(consulta['periodo']).mean().round(3)
+            # ---------------------------------------------------------------
+            # criar um DataFrame para armazenar os dados da produção de energia
+            df_producao = pd.DataFrame()
+            print('Calculando produção de energia')
+
+            for column in df.columns:
+                if 'acumulador_energia' in column:
+                    df_producao[column] = self.calculate_production(df, column, period=consulta['periodo'])
+
+            # # resample para o período desejado
+            # df_producao = df.resample(consulta['periodo']).mean().round(3)
 
             # Substituir valores NaN antes de converter o DataFrame em um dicionário
             df_producao.fillna(0, inplace=True)
@@ -193,7 +201,23 @@ class Data:
             # converter o DataFrame em um dicionário
             converter_dicionario = self.converter_historico({"status": "ok", "df": df_producao.to_dict()})
 
-            # print(converter_dicionario)
+            # ------------------------------
+            #
+            # # criar um DataFrame para armazenar os dados da produção de energia
+            # df_producao = pd.DataFrame()
+            #
+            # # Calcular a produção de energia para determinado periodo
+            # for column in df.columns:
+            #     if 'acumulador_energia' in column:
+            #         df_producao[column] = self.calculate_production(df, column, period=consulta['periodo'])
+            #
+            # # Substituir valores NaN antes de converter o DataFrame em um dicionário
+            # df_producao.fillna(0, inplace=True)
+            #
+            # # verificar se o DataFrame de produção está vazio
+            # self.is_empty(df_producao)
+            #
+            # converter_dicionario = self.converter_dicionario({"status": "ok", "df": df_producao.to_dict()})
 
             return converter_dicionario
 
@@ -202,7 +226,7 @@ class Data:
 
 
 
-    def get_data(self, consulta):
+    def consult(self, consulta):
         ''' Retorna os valores das colunas solicitadas '''
 
         try:
@@ -262,7 +286,7 @@ class Data:
         except Exception as e:
             raise Exception(f"Erro: {e}")
 
-    def process(self, consulta):
+    def production_acumulated(self, consulta):
         ''' Processa os dados da consulta '''
 
         try:
@@ -330,7 +354,7 @@ class Data:
         except Exception as e:
             raise Exception(f"Erro ao processar os dados da consulta {e}")
 
-    def get_columns(self, column):
+    def columns(self, column):
         ''' Retorna as colunas da tabela solicitada '''
 
         try:

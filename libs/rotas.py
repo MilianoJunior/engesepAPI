@@ -84,8 +84,6 @@ class Column(BaseModel):
             raise ValueError('Token inválido')
         return v
 
-
-
 class Crypto:
 
     @staticmethod
@@ -115,30 +113,14 @@ class Rotas:
         self.data = Data()
         self.auth = Crypto()
 
-
-    async def get_history(self,consulta: Consulta):
-        ''' Retorna o histórico de dados da usina solicitada '''
-
-        try:
-            if not self.auth.verify_password(self.auth.hash_password(self.data.token), consulta.token):
-                return HTTPException(status_code=401, detail="Token inválido",
-                                        headers={"status": "Token inválido"})
-
-            historico = self.data.get_historico(consulta)
-            return historico
-
-        except Exception as e:
-            return []
-
-    async def get_data(self, consulta: Consulta):
+    async def get_production_acumulated(self, consulta: Consulta):
         ''' Retorna os dados do mês solicitado '''
 
         try:
             if not self.auth.verify_password(self.auth.hash_password(self.data.token), consulta.token):
                 return HTTPException(status_code=401, detail="Token inválido",
                                         headers={"status": "Token inválido"})
-
-            dados = self.data.process(consulta)
+            dados = self.data.production_acumulated(consulta)
             return dados
 
         except Exception as e:
@@ -147,15 +129,28 @@ class Rotas:
             # return HTTPException(status_code=404, detail=str(e),
             #                      headers={"status": f"Erro ao processar a consulta: {e}"})
 
+    async def get_history(self,consulta: Consulta):
+        ''' Retorna o histórico de dados da usina solicitada '''
 
-    async def get_values(self,consulta: Consulta):
+        try:
+            if not self.auth.verify_password(self.auth.hash_password(self.data.token), consulta.token):
+                return HTTPException(status_code=401, detail="Token inválido",
+                                        headers={"status": "Token inválido"})
+            historico = self.data.history(consulta)
+            return historico
+
+        except Exception as e:
+            print('0 - HISTÓRICO - ERRO: ',consulta)
+            return []
+
+    async def get_consult(self,consulta: Consulta):
         ''' Retorna os valores da tabela solicitada '''
 
         try:
             if not self.auth.verify_password(self.auth.hash_password(self.data.token), consulta.token):
                 return HTTPException(status_code=401, detail="Token inválido",
                                         headers={"status": "Token inválido"})
-            values = self.data.get_data(consulta)
+            values = self.data.consult(consulta)
             return values
 
         except Exception as e:
@@ -171,8 +166,7 @@ class Rotas:
             if not self.auth.verify_password(self.auth.hash_password(self.data.token), column.token):
                 return HTTPException(status_code=401, detail="Token inválido",
                                         headers={"status": "Token inválido"})
-
-            columns = self.data.get_columns(column)
+            columns = self.data.columns(column)
             return columns
 
         except Exception as e:
@@ -181,15 +175,14 @@ class Rotas:
             # return HTTPException(status_code=404, detail=str(e),
             #                      headers={"status": f"Erro ao processar a consulta: {e}"})
 
-    async def get_production(self, consulta: Production):
+    async def get_production_all(self, consulta: Production):
         ''' Retorna os dados da produção total '''
 
         try:
             if not self.auth.verify_password(self.auth.hash_password(self.data.token), consulta.token):
                 return HTTPException(status_code=401, detail="Token inválido",
                                         headers={"status": "Token inválido"})
-
-            production = self.data.get_production(consulta)
+            production = self.data.production_all(consulta)
             return production
 
         except Exception as e:

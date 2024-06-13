@@ -4,7 +4,7 @@ Autor: Miliano Fernandes de Oliveira
 Data de criação: 2024-04-11
 Última modificação: 2024-04-17
 """
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI
 from multiprocessing import Process
 from libs.rotas import Rotas
 import uvicorn
@@ -12,7 +12,7 @@ import requests
 import json
 import os
 import time
-from apscheduler.schedulers.background import BackgroundScheduler
+# from apscheduler.schedulers.background import BackgroundScheduler
 from datetime import datetime, timedelta
 import threading
 
@@ -32,43 +32,43 @@ Definição das rotas da API
 rotas = Rotas()
 
 
-'''
-Definição data que torna os dados da produção de energia acumulada
-'''
+'''Endpoint para obter os dados da produção de energia acumulada em diferentes períodos de tempo'''
+app.post("/data/producao_acumulada")(rotas.get_production_acumulated)
 
-'''
-Endpoint para obter os dados da produção acumulada
-Para diferentes períodos de tempo
-
-'''
-app.post("/data/producao_acumulada")(rotas.get_data)
+'''Endpoint para obter os dados de qualquer coluna em diferentes períodos de tempo, menos a coluna da produção de energia acumulada'''
 app.post("/historico")(rotas.get_history)
-app.post("/consult")(rotas.get_values)
+
+''' Endpoint para obter os valores das colunas da tabela solicitada'''
+app.post("/consult")(rotas.get_consult)
+
+''' Endpoint para obter as colunas da tabela solicitada '''
 app.post("/columns")(rotas.get_columns)
-app.post("/data/producao_total")(rotas.get_production)
 
-def evento():
-    ''' Função para enviar email todos os dias as 08:00 '''
+''' Endpoint para obter os dados da produção total de energia '''
+app.post("/data/producao_total")(rotas.get_production_all)
 
-    # importar a função main do arquivo email.py -  A lógica está testada e enviando email corretamente
-    from libs.email import main
-    print('Evento disparado as 15:10')
+# def evento():
+#     ''' Função para enviar email todos os dias as 08:00 '''
+#
+#     # importar a função main do arquivo email.py -  A lógica está testada e enviando email corretamente
+#     from libs.email import main
+#     print('Evento disparado as 15:10')
+#
+#     main()
 
-    main()
-
-def start_scheduler():
-    ''' Iniciar o agendador APScheduler '''
-    scheduler = BackgroundScheduler()
-    # Agendar a função evento para ser executada todos os dias às 08:00
-    scheduler.add_job(evento, 'cron', hour=15, minute=22)
-    scheduler.start()
-
-    # Garantir que o agendador pare ao desligar o programa
-    try:
-        while True:
-            time.sleep(2)
-    except (KeyboardInterrupt, SystemExit):
-        scheduler.shutdown()
+# def start_scheduler():
+#     ''' Iniciar o agendador APScheduler '''
+#     scheduler = BackgroundScheduler()
+#     # Agendar a função evento para ser executada todos os dias às 08:00
+#     scheduler.add_job(evento, 'cron', hour=15, minute=22)
+#     scheduler.start()
+#
+#     # Garantir que o agendador pare ao desligar o programa
+#     try:
+#         while True:
+#             time.sleep(2)
+#     except (KeyboardInterrupt, SystemExit):
+#         scheduler.shutdown()
 
 
 
@@ -79,9 +79,9 @@ def run_uvicorn():
     # ler a variável de ambiente HOST
     host = os.getenv("HOST", '0.0.0.0')
 
-    # iniciar agendador de tarefas em um thread separado
-    scheduler_thread = threading.Thread(target=start_scheduler)
-    scheduler_thread.start()
+    # # iniciar agendador de tarefas em um thread separado
+    # scheduler_thread = threading.Thread(target=start_scheduler)
+    # scheduler_thread.start()
 
     print('Servidor iniciado')
 

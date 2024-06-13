@@ -14,6 +14,7 @@ import json
 import os
 import time
 from libs.email import main
+from tabulate import tabulate
 
 '''
 Definição da aplicação FastAPI
@@ -25,16 +26,14 @@ Definição das rotas da API
 '''
 rotas = Rotas()
 
-
 '''
 Definição data que torna os dados da produção de energia acumulada
 '''
-app.post("/data/producao_acumulada")(rotas.get_data)
+app.post("/data/producao_acumulada")(rotas.get_production_acumulated)
 app.post("/historico")(rotas.get_history)
-app.post("/consult")(rotas.get_values)
+app.post("/consult")(rotas.get_consult)
 app.post("/columns")(rotas.get_columns)
-app.post("/data/producao_total")(rotas.get_production)
-
+app.post("/data/producao_total")(rotas.get_production_all)
 
 # 12 - Iniciar o servidor FastAPI
 def run_uvicorn():
@@ -53,21 +52,32 @@ def test_api():
     def imprimir_resposta(response):
         ''' Imprimir a resposta da API '''
 
-        # Verificar se a resposta HTTP contém um corpo antes de tentar convertê-lo em JSON
-        if response.content:
-            try:
-                response_dict = response.json()
-            except ValueError:
-                print("A resposta não é um JSON válido")
-        else:
-            print("A resposta HTTP está vazia")
+        print('---' * 20)
+        print('Imprimindo a resposta da API')
+        response_dict = response.json()
 
         # imprimir a resposta
-        for key, value in response_dict.items():
-            if isinstance(value, dict):
-                print(f"1 - Key: {key} ")
-                for k, v in value.items():
-                    print('     2 - Key: ', k, 'Value: ', v)
+        formatted_json = json.dumps(response_dict, indent=4)
+
+        print(formatted_json)
+
+        # print(tabulate(response_dict, headers='keys', tablefmt='pretty'))
+
+        # # Verificar se a resposta HTTP contém um corpo antes de tentar convertê-lo em JSON
+        # if response.content:
+        #     try:
+        #         response_dict = response.json()
+        #     except ValueError:
+        #         print("A resposta não é um JSON válido")
+        # else:
+        #     print("A resposta HTTP está vazia")
+        #
+        # # imprimir a resposta
+        # for key, value in response_dict.items():
+        #     if isinstance(value, dict):
+        #         print(f"1 - Key: {key} ")
+        #         for k, v in value.items():
+        #             print('     2 - Key: ', k, 'Value: ', v)
 
     def test_acumulador_energia(time, url):
         ''' Testar a API para a coluna acumulador_energia '''
@@ -87,8 +97,8 @@ def test_api():
                 "usina": "cgh_aparecida",
                 "coluna": ["acumulador_energia"],
                 "periodo": p,
-                "data_inicio": "24/01/2021",
-                "data_fim": "28/01/2021",
+                "data_inicio": "01/01/2024",
+                "data_fim": "14/06/2024",
                 "token": "123456",
             }
 
@@ -101,8 +111,8 @@ def test_api():
             # imprimir o status code
             if response.status_code == 200:
                 # imprimir a mensagem de requisição bem sucedida
-                # imprimir_resposta(response)
-                print(response.text)
+                imprimir_resposta(response)
+                # print(response.text)
 
             else:
                 print(f"Erro ao fazer a requisição: {response.text}")
@@ -120,7 +130,7 @@ def test_api():
 
         # corpo da requisição
         body = {
-            "usina": "jasp_test",
+            "usina": "cgh_aparecida",
             "token": "123456",
         }
 
@@ -134,6 +144,7 @@ def test_api():
         if response.status_code == 200:
             # imprimir a mensagem de requisição bem sucedida
             imprimir_resposta(response)
+            # print(response.text)
 
         else:
             print(f"Erro ao fazer a requisição: {response.text}")
@@ -141,12 +152,12 @@ def test_api():
         print('---' * 20)
 
 
-    def test_values(time, url):
+    def test_consult(time, url):
         ''' Testar a API para a coluna acumulador_energia '''
         url = url.replace('rota', 'consult')
 
         # período de teste
-        periodo = ['hour', 'day', 'week', 'month', 'year']
+        periodo = ['day'] # ['hour', 'day', 'week', 'month', 'year']
 
         for p in periodo:
             # imprimir o período de teste
@@ -157,10 +168,10 @@ def test_api():
             # corpo da requisição
             body = {
                 "usina": "cgh_aparecida",
-                "coluna": ["acumulador_energia"],
+                "coluna": ["posicao_rotor"],
                 "periodo": p,
-                "data_inicio": "24/01/2021",
-                "data_fim": "28/01/2021",
+                "data_inicio": "01/05/2024",
+                "data_fim": "25/05/2024",
                 "token": "123456",
             }
 
@@ -173,8 +184,8 @@ def test_api():
             # imprimir o status code
             if response.status_code == 200:
                 # imprimir a mensagem de requisição bem sucedida
-                # imprimir_resposta(response)
-                print(response.text)
+                imprimir_resposta(response)
+                # print(response.text)
 
             else:
                 print(f"Erro ao fazer a requisição: {response.text}")
@@ -186,7 +197,8 @@ def test_api():
         url = url.replace('rota', 'historico')
 
         # período de teste
-        periodo = ['hour', 'day', 'week', 'month', 'year']
+        # periodo = ['hour', 'day', 'week', 'month', 'year']
+        periodo = ['day']
 
         for p in periodo:
             # imprimir o período de teste
@@ -197,10 +209,10 @@ def test_api():
             # corpo da requisição
             body = {
                 "usina": "cgh_aparecida",
-                "coluna": ["acumulador_energia"],
+                "coluna": ["energia"],
                 "periodo": p,
-                "data_inicio": "24/01/2021",
-                "data_fim": "28/01/2021",
+                "data_inicio": "01/06/2024",
+                "data_fim": "14/06/2024",
                 "token": "123456",
             }
 
@@ -213,8 +225,8 @@ def test_api():
             # imprimir o status code
             if response.status_code == 200:
                 # imprimir a mensagem de requisição bem sucedida
-                # imprimir_resposta(response)
-                print(response.text)
+                imprimir_resposta(response)
+                # print(response.text)
 
             else:
                 print(f"Erro ao fazer a requisição: {response.text}")
@@ -240,8 +252,8 @@ def test_api():
         # imprimir o status code
         if response.status_code == 200:
             # imprimir a mensagem de requisição bem sucedida
-            # imprimir_resposta(response)
-            print(response.text)
+            imprimir_resposta(response)
+            # print(response.text)
 
         else:
             print(f"Erro ao fazer a requisição: {response.text}")
@@ -264,13 +276,13 @@ def test_api():
     # test_columns(time, url)
     # print('####################' * 20)
     # Testar a API para a coluna values
-    # test_values(time, url)
-    # print('####################' * 20)
+    # test_consult(time, url)
+    # # print('####################' * 20)
     # Testar a API para a coluna historico
-    # test_historico(time, url)
-    print('####################' * 20)
-    # Testar a API para a coluna producao_total
-    test_producao_total(time, url)
+    test_historico(time, url)
+    # # print('####################' * 20)
+    # # Testar a API para a coluna producao_total
+    # test_producao_total(time, url)
 
 
 
@@ -281,12 +293,6 @@ if __name__ == "__main__":
     # ler a variável de ambiente DEBUG
     inicio = time.time()
     debug = 1
-    # test_api()
-    #
-    # fim = time.time()
-    # print('---' * 20)
-    # print(f"Tempo de execução: {fim - inicio} segundos")
-
 
     # verificar se o modo de depuração está ativado
     if bool(debug):
@@ -320,7 +326,11 @@ if __name__ == "__main__":
 
 
 
+'''
+ Questões do aplicativo:
+ 1 - Toda vez que o aplicativo
 
+'''
 # O formato de resposta atual da API:
 # {
 #     "status":"ok",
