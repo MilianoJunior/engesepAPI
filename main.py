@@ -31,7 +31,8 @@ app = FastAPI(
 origins = [
     "http://localhost",
     "http://0.0.0.0",
-    "fastapi-production-8d7e.up.railway.app",
+    "https://engeapp.flutterflow.app",  # Inclua o domínio do seu app
+    "https://fastapi-production-8d7e.up.railway.app",  # Inclua o domínio do Railway
 ]
 
 app.add_middleware(
