@@ -127,10 +127,8 @@ class Data:
             # data_hora como índice
             df.set_index('data_hora', inplace=True)
 
-            print(df.columns)
             # Somar os valores de produção de energia de todas as unidades geradoras em uma única coluna
             df['producao_total'] = df[[column for column in df.columns if 'energia' in column]].sum(axis=1)
-            print(df.values[0])
 
             # converter o DataFrame em um dicionário
             return {"status": "ok", "df": [{ "leitura": df.index[0].strftime('%Y-%m-%dT%H:%M:%S') ,"total": round(df['producao_total'].values[0],3)}]}
@@ -186,7 +184,7 @@ class Data:
             # ---------------------------------------------------------------
             # criar um DataFrame para armazenar os dados da produção de energia
             df_producao = pd.DataFrame()
-            print('Calculando produção de energia')
+            # print('Calculando produção de energia')
 
             for column in df.columns:
                 if 'acumulador_energia' in column:
@@ -198,26 +196,10 @@ class Data:
             # Substituir valores NaN antes de converter o DataFrame em um dicionário
             df_producao.fillna(0, inplace=True)
 
+
+
             # converter o DataFrame em um dicionário
             converter_dicionario = self.converter_historico({"status": "ok", "df": df_producao.to_dict()})
-
-            # ------------------------------
-            #
-            # # criar um DataFrame para armazenar os dados da produção de energia
-            # df_producao = pd.DataFrame()
-            #
-            # # Calcular a produção de energia para determinado periodo
-            # for column in df.columns:
-            #     if 'acumulador_energia' in column:
-            #         df_producao[column] = self.calculate_production(df, column, period=consulta['periodo'])
-            #
-            # # Substituir valores NaN antes de converter o DataFrame em um dicionário
-            # df_producao.fillna(0, inplace=True)
-            #
-            # # verificar se o DataFrame de produção está vazio
-            # self.is_empty(df_producao)
-            #
-            # converter_dicionario = self.converter_dicionario({"status": "ok", "df": df_producao.to_dict()})
 
             return converter_dicionario
 
@@ -290,7 +272,6 @@ class Data:
         ''' Processa os dados da consulta '''
 
         try:
-
             # substituir a string do período pelo valor correspondente
             consulta.periodo = self.periodos.get(consulta.periodo, 'D')
 
@@ -306,7 +287,7 @@ class Data:
             # verificar se o DataFrame está vazio
             self.is_empty(df_columns)
 
-            # declara variável para armazenar as colunas
+            # declara variável para armazenar as colunassas
             columns = 'data_hora,'
 
             # verificar se a coluna solicitada existe
@@ -320,6 +301,7 @@ class Data:
             # criar a query
             query = f"SELECT {columns} FROM {consulta['usina']} WHERE data_hora BETWEEN '{consulta['data_inicio']}' AND '{consulta['data_fim']}';"
 
+            # print(query)
             # executar a query com a função fetch_all
             df = self.connection.fetch_all(query)
 
@@ -338,13 +320,15 @@ class Data:
             # Calcular a produção de energia para determinado periodo
             for column in df.columns:
                 if 'acumulador_energia' in column:
-                    df_producao[column] = self.calculate_production(df, column, period=consulta['periodo'])
+                    dados = self.calculate_production(df, column, period=consulta['periodo'])
+                    df_producao[column] = dados
 
             # Substituir valores NaN antes de converter o DataFrame em um dicionário
-            df_producao.fillna(0, inplace=True)
+            # df_producao.fillna(0, inplace=True)
 
             # verificar se o DataFrame de produção está vazio
             self.is_empty(df_producao)
+
 
             converter_dicionario = self.converter_dicionario({"status": "ok", "df": df_producao.to_dict()})
 
@@ -400,7 +384,11 @@ class Data:
             df_resampled.columns = ['First Value', 'Last Value', columnp]
 
             # Remove linhas onde a produção é NaN ou 0, pois isso indica que não houve produção no período
-            df_resampled = df_resampled[df_resampled[columnp].notna() & (df_resampled[columnp] != 0)]
+            # df_resampled = df_resampled[df_resampled[columnp].notna()]
+            # Substituir valores NaN por 0
+            df_resampled[columnp].fillna(0, inplace=True)
+
+            # & (df_resampled[columnp] != 0)]
 
             # exclui as colunas First Value e Last Value
             df_resampled = df_resampled.drop(columns=['First Value', 'Last Value'])

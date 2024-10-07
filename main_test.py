@@ -61,30 +61,13 @@ def test_api():
 
         print(formatted_json)
 
-        # print(tabulate(response_dict, headers='keys', tablefmt='pretty'))
-
-        # # Verificar se a resposta HTTP contém um corpo antes de tentar convertê-lo em JSON
-        # if response.content:
-        #     try:
-        #         response_dict = response.json()
-        #     except ValueError:
-        #         print("A resposta não é um JSON válido")
-        # else:
-        #     print("A resposta HTTP está vazia")
-        #
-        # # imprimir a resposta
-        # for key, value in response_dict.items():
-        #     if isinstance(value, dict):
-        #         print(f"1 - Key: {key} ")
-        #         for k, v in value.items():
-        #             print('     2 - Key: ', k, 'Value: ', v)
 
     def test_acumulador_energia(time, url):
         ''' Testar a API para a coluna acumulador_energia '''
         url = url.replace('rota', 'data/producao_acumulada')
 
         # período de teste
-        periodo = ['hour', 'day', 'week', 'month', 'year']
+        periodo = ['day'] #['hour', 'day', 'week', 'month', 'year']
 
         for p in periodo:
             # imprimir o período de teste
@@ -94,11 +77,11 @@ def test_api():
             print('###' * 20)
             # corpo da requisição
             body = {
-                "usina": "cgh_aparecida",
+                "usina": "cgh_becker",
                 "coluna": ["acumulador_energia"],
                 "periodo": p,
-                "data_inicio": "01/01/2024",
-                "data_fim": "14/06/2024",
+                "data_inicio": "01/10/2024",
+                "data_fim": "14/10/2024",
                 "token": "123456",
             }
 
@@ -157,7 +140,7 @@ def test_api():
         url = url.replace('rota', 'consult')
 
         # período de teste
-        periodo = ['day'] # ['hour', 'day', 'week', 'month', 'year']
+        periodo =  ['hour', 'day', 'week', 'month', 'year']
 
         for p in periodo:
             # imprimir o período de teste
@@ -167,11 +150,11 @@ def test_api():
             print('###' * 20)
             # corpo da requisição
             body = {
-                "usina": "cgh_aparecida",
-                "coluna": ["posicao_rotor"],
+                "usina": "cgh_becker",
+                "coluna": ["energia"],
                 "periodo": p,
-                "data_inicio": "01/05/2024",
-                "data_fim": "25/05/2024",
+                "data_inicio": "01/10/2024",
+                "data_fim": "10/10/2024",
                 "token": "123456",
             }
 
@@ -197,8 +180,8 @@ def test_api():
         url = url.replace('rota', 'historico')
 
         # período de teste
-        # periodo = ['hour', 'day', 'week', 'month', 'year']
-        periodo = ['day']
+        periodo = ['hour', 'day', 'week', 'month', 'year']
+        # periodo = ['day']
 
         for p in periodo:
             # imprimir o período de teste
@@ -208,11 +191,11 @@ def test_api():
             print('###' * 20)
             # corpo da requisição
             body = {
-                "usina": "cgh_aparecida",
+                "usina": "cgh_becker",
                 "coluna": ["energia"],
                 "periodo": p,
-                "data_inicio": "01/06/2024",
-                "data_fim": "14/06/2024",
+                "data_inicio": "01/10/2024",
+                "data_fim": "14/10/2024",
                 "token": "123456",
             }
 
@@ -270,7 +253,7 @@ def test_api():
     url = 'http://127.0.0.1:8000/rota'
     # url = 'https://fastapi-production-8d7e.up.railway.app/rota'
     # # Testar a API para a coluna acumulador_energia
-    # test_acumulador_energia(time, url)
+    test_acumulador_energia(time, url)
 
     # Testar a API para a coluna columns
     # test_columns(time, url)
@@ -279,7 +262,7 @@ def test_api():
     # test_consult(time, url)
     # # print('####################' * 20)
     # Testar a API para a coluna historico
-    test_historico(time, url)
+    # test_historico(time, url)
     # # print('####################' * 20)
     # # Testar a API para a coluna producao_total
     # test_producao_total(time, url)
