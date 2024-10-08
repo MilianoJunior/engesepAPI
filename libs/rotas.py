@@ -117,9 +117,9 @@ class Rotas:
         ''' Retorna os dados do mês solicitado '''
 
         try:
-            if not self.auth.verify_password(self.auth.hash_password(self.data.token), consulta.token):
-                return HTTPException(status_code=401, detail="Token inválido",
-                                        headers={"status": "Token inválido"})
+            # if not self.auth.verify_password(self.auth.hash_password(self.data.token), consulta.token):
+            #     return HTTPException(status_code=401, detail="Token inválido",
+            #                             headers={"status": "Token inválido"})
             dados = self.data.production_acumulated(consulta)
             return dados
 
@@ -147,9 +147,9 @@ class Rotas:
         ''' Retorna os valores da tabela solicitada '''
 
         try:
-            if not self.auth.verify_password(self.auth.hash_password(self.data.token), consulta.token):
-                return HTTPException(status_code=401, detail="Token inválido",
-                                        headers={"status": "Token inválido"})
+            # if not self.auth.verify_password(self.auth.hash_password(self.data.token), consulta.token):
+            #     return HTTPException(status_code=401, detail="Token inválido",
+            #                             headers={"status": "Token inválido"})
             values = self.data.consult(consulta)
             return values
 

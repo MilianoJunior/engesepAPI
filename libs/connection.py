@@ -93,11 +93,25 @@ class Connection:
             # inverter o nome das colunas
             columns = [self.reverse_rename(col) for col in columns]
 
+
             # Obter todos os dados
             result = cursor.fetchall()
 
             # Criar um DataFrame com os dados e as colunas
             df = pd.DataFrame(result, columns=columns)
+
+            # print(quey)
+
+            # querycolumns = "SHOW COLUMNS FROM cgh_granada"
+            # cursor.execute(querycolumns)
+            #
+            # columns = [col[0] for col in cursor.fetchall()]
+            # cont = 0
+            # print(columns)
+            # for col in columns:
+            #     if col not in colunas2:
+            #         cont += 1
+            #         print(cont, col)
 
             #converter a coluna data_hora para datetime
             if 'data_hora' in df.columns:

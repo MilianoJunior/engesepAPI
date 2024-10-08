@@ -26,7 +26,7 @@ class Data:
                         'week': 'W',
                         'month': 'M',
                         'year': 'Y',
-                        'hour': 'H',
+                        'hour': 'h',
                     }
 
     def converter_dicionario(self, original):
@@ -44,8 +44,10 @@ class Data:
 
             # Cria uma lista de leituras; aqui estamos assumindo que value é um dicionário de leituras
             leituras = []
+            var = ['acumulado' if 'acumulado' in s else s for s in original['df'].keys()]
+
             for data, acumulado in value.items():
-                leituras.append({"leitura": data, "acumulado": acumulado})
+                leituras.append({"leitura": data, var[0]: acumulado})
 
             # Adiciona a entrada da geradora no resultado
             resultado["df"].append({"geradora": geradora, "leituras": leituras})
@@ -253,16 +255,19 @@ class Data:
             # data_hora como índice
             df.set_index('data_hora', inplace=True)
 
-            # resample para o período desejado
-            df_producao = df.resample(consulta['periodo']).mean().round(3)
+            try:
+                # resample para o período desejado
+                df = df.resample(consulta['periodo']).mean().round(3)
+            except Exception as e:
+                pass
 
             # Substituir valores NaN antes de converter o DataFrame em um dicionário
-            df_producao.fillna(0, inplace=True)
+            df.fillna(0, inplace=True)
+
 
             # converter o DataFrame em um dicionário
-            converter_dicionario = self.converter_dicionario({"status": "ok", "df": df_producao.to_dict()})
+            converter_dicionario = self.converter_dicionario({"status": "ok", "df": df.to_dict()})
 
-            # return {"status": "ok", "df": df_producao.to_dict()}
             return converter_dicionario
 
         except Exception as e:
