@@ -96,6 +96,7 @@ def test_api():
                 # imprimir a mensagem de requisição bem sucedida
                 imprimir_resposta(response)
                 # print(response.text)
+                # pass
 
             else:
                 print(f"Erro ao fazer a requisição: {response.text}")
@@ -169,6 +170,7 @@ def test_api():
                 # imprimir a mensagem de requisição bem sucedida
                 imprimir_resposta(response)
                 # print(response.text)
+                # pass
 
             else:
                 print(f"Erro ao fazer a requisição: {response.text}")

@@ -255,14 +255,15 @@ class Data:
             # data_hora como índice
             df.set_index('data_hora', inplace=True)
 
-            try:
-                # resample para o período desejado
-                df = df.resample(consulta['periodo']).mean().round(3)
-            except Exception as e:
-                pass
+            # try:
+            #     # resample para o período desejado
+            #     df = df.resample(consulta['periodo']).mean().round(3)
+            # except Exception as e:
+            #     pass
 
             # Substituir valores NaN antes de converter o DataFrame em um dicionário
             df.fillna(0, inplace=True)
+            print(df)
 
 
             # converter o DataFrame em um dicionário

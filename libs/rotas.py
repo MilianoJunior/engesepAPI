@@ -98,10 +98,11 @@ class Crypto:
     @staticmethod
     def verify_password(stored_password: str, provided_password: str) -> bool:
         """Verify a stored password against one provided by user."""
-
+        print('2 - Token: ', stored_password, provided_password)
         salt = stored_password[:64].encode('ascii')
         stored_password = stored_password[64:]
         pwdhash = hashlib.pbkdf2_hmac('sha256', provided_password.encode('utf-8'), salt, 100000)
+        print('2 - HASH: ',pwdhash.hex(), stored_password,pwdhash.hex() == stored_password)
         return pwdhash.hex() == stored_password
 
 
@@ -147,9 +148,11 @@ class Rotas:
         ''' Retorna os valores da tabela solicitada '''
 
         try:
-            # if not self.auth.verify_password(self.auth.hash_password(self.data.token), consulta.token):
-            #     return HTTPException(status_code=401, detail="Token inválido",
-            #                             headers={"status": "Token inválido"})
+            print('1 - Consulta: ',consulta)
+            if not self.auth.verify_password(self.auth.hash_password(self.data.token), consulta.token):
+                print('Erro 01')
+                return HTTPException(status_code=401, detail="Token inválido",
+                                        headers={"status": "Token inválido"})
             values = self.data.consult(consulta)
             return values
 

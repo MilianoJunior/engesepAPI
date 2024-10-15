@@ -64,7 +64,11 @@ app.post("/columns")(rotas.get_columns)
 ''' Endpoint para obter os dados da produção total de energia '''
 app.post("/data/producao_total")(rotas.get_production_all)
 
-
+# app.post("/data/producao_acumulada")(rotas.get_production_acumulated)
+# app.post("/historico")(rotas.get_history)
+# app.post("/consult")(rotas.get_consult)
+# app.post("/columns")(rotas.get_columns)
+# app.post("/data/producao_total")(rotas.get_production_all)
 # 12 - Iniciar o servidor FastAPI
 def run_uvicorn():
     ''' Iniciar o servidor FastAPI '''
