@@ -61,215 +61,127 @@ def test_api():
 
         print(formatted_json)
 
-
-    def test_acumulador_energia(time, url):
-        ''' Testar a API para a coluna acumulador_energia '''
-        url = url.replace('rota', 'data/producao_acumulada')
-
-        # período de teste
-        periodo = ['day'] #['hour', 'day', 'week', 'month', 'year']
-
-        for p in periodo:
-            # imprimir o período de teste
-            print('###' * 20)
-            print(f'Testando o período: {p}')
-            print(url)
-            print('###' * 20)
-            # corpo da requisição
-            body = {
-                "usina": "cgh_granada",
-                "coluna": ["acumulador_energia"],
-                "periodo": p,
-                "data_inicio": "01/09/2024",
-                "data_fim": "14/10/2024",
-                "token": "123456",
-            }
-
-            # cabeçalho da requisição
-            headers = {'Content-type': 'application/json'}
-
-            # fazer a requisição POST
-            response = requests.post(url, data=json.dumps(body), headers=headers)
-
-            # imprimir o status code
-            if response.status_code == 200:
-                # imprimir a mensagem de requisição bem sucedida
-                imprimir_resposta(response)
-                # print(response.text)
-                # pass
-
-            else:
-                print(f"Erro ao fazer a requisição: {response.text}")
-            print(f'Tempo de execução: {time.time() - inicio} segundos')
-            print('---' * 20)
-
-    def test_columns(time, url):
-        ''' Testar a API para a coluna columns '''
-        url = url.replace('rota', 'columns')
-
-        # imprimir a url
-        print('---' * 20)
-        print(url)
-        print('---' * 20)
-
-        # corpo da requisição
-        body = {
-            "usina": "cgh_aparecida",
-            "token": "123456",
-        }
-
-        # cabeçalho da requisição
+    def test_endpoint(endpoint, body, description=""):
+        ''' Testar um endpoint específico '''
+        url = f'http://localhost:8000/{endpoint}'
+        
+        print('=' * 60)
+        print(f'Testando: {description}')
+        print(f'Endpoint: {endpoint}')
+        print(f'URL: {url}')
+        print('=' * 60)
+        
         headers = {'Content-type': 'application/json'}
-
-        # fazer a requisição POST
-        response = requests.post(url, data=json.dumps(body), headers=headers)
-
-        # imprimir o status code
-        if response.status_code == 200:
-            # imprimir a mensagem de requisição bem sucedida
-            imprimir_resposta(response)
-            # print(response.text)
-
-        else:
-            print(f"Erro ao fazer a requisição: {response.text}")
-        print(f'Tempo de execução: {time.time() - inicio} segundos')
-        print('---' * 20)
-
-
-    def test_consult(time, url):
-        ''' Testar a API para a coluna acumulador_energia '''
-        url = url.replace('rota', 'consult')
-
-        # período de teste
-        periodo =  ['hour'] #, 'day', 'week', 'month', 'year']
-
-        for p in periodo:
-            # imprimir o período de teste
-            print('###' * 20)
-            print(f'Testando o período: {p}')
-            print(url)
-            print('###' * 20)
-            # corpo da requisição
-            body = {
-                "usina": "cgh_becker",
-                "coluna": ["ug01_status"],
-                "periodo": p,
-                "data_inicio": "08/10/2024",
-                "data_fim": "09/10/2024",
-                "token": "123456",
-            }
-
-            # cabeçalho da requisição
-            headers = {'Content-type': 'application/json'}
-
-            # fazer a requisição POST
+        
+        try:
             response = requests.post(url, data=json.dumps(body), headers=headers)
-
-            # imprimir o status code
+            
+            print(f'Status Code: {response.status_code}')
+            
             if response.status_code == 200:
-                # imprimir a mensagem de requisição bem sucedida
+                print('✅ Requisição bem-sucedida!')
                 imprimir_resposta(response)
-                # print(response.text)
-                # pass
-
             else:
-                print(f"Erro ao fazer a requisição: {response.text}")
-            print(f'Tempo de execução: {time.time() - inicio} segundos')
-            print('---' * 20)
-
-    def test_historico(time, url):
-        ''' Testar a API para a coluna acumulador_energia '''
-        url = url.replace('rota', 'historico')
-
-        # período de teste
-        periodo = ['hour', 'day', 'week', 'month', 'year']
-        # periodo = ['day']
-
-        for p in periodo:
-            # imprimir o período de teste
-            print('###' * 20)
-            print(f'Testando o período: {p}')
-            print(url)
-            print('###' * 20)
-            # corpo da requisição
-            body = {
-                "usina": "cgh_becker",
-                "coluna": ["energia"],
-                "periodo": p,
-                "data_inicio": "01/10/2024",
-                "data_fim": "14/10/2024",
-                "token": "123456",
-            }
-
-            # cabeçalho da requisição
-            headers = {'Content-type': 'application/json'}
-
-            # fazer a requisição POST
-            response = requests.post(url, data=json.dumps(body), headers=headers)
-
-            # imprimir o status code
-            if response.status_code == 200:
-                # imprimir a mensagem de requisição bem sucedida
-                imprimir_resposta(response)
-                # print(response.text)
-
-            else:
-                print(f"Erro ao fazer a requisição: {response.text}")
-            print(f'Tempo de execução: {time.time() - inicio} segundos')
-            print('---' * 20)
-
-    def test_producao_total(time, url):
-        ''' Testar a API para a coluna acumulador_energia '''
-
-        url = url.replace('rota', 'data/producao_total')
-
-        body = {
-                "usina": "cgh_aparecida",
-                "token": "123456",
-        }
-
-        # cabeçalho da requisição
-        headers = {'Content-type': 'application/json'}
-
-        # fazer a requisição POST
-        response = requests.post(url, data=json.dumps(body), headers=headers)
-
-        # imprimir o status code
-        if response.status_code == 200:
-            # imprimir a mensagem de requisição bem sucedida
-            imprimir_resposta(response)
-            # print(response.text)
-
-        else:
-            print(f"Erro ao fazer a requisição: {response.text}")
-        print(f'Tempo de execução: {time.time() - inicio} segundos')
-        print('---' * 20)
+                print(f'❌ Erro na requisição: {response.status_code}')
+                print(f'Resposta: {response.text}')
+                
+        except Exception as e:
+            print(f'❌ Erro de conexão: {e}')
+            
+        print(f'Tempo de execução: {time.time() - inicio:.2f} segundos')
+        print('-' * 60)
 
     # Iniciar o tempo de execução=========================
     inicio = time.time()
     print('---' * 20)
     print('Iniciando a função de teste da API')
-    # main()  # Enviar email
-    # url da API
-    # url = 'https://fastapi-production-8d7e.up.railway.app/data/producao_acumulada'
-    # url = 'http://127.0.0.1:8000/rota'
-    url = 'https://fastapi-production-8d7e.up.railway.app/rota'
-    # # Testar a API para a coluna acumulador_energia
-    # test_acumulador_energia(time, url)
+    print('---' * 20)
 
-    # Testar a API para a coluna columns
-    # test_columns(time, url)
-    # print('####################' * 20)
-    # Testar a API para a coluna values
-    test_consult(time, url)
-    # # print('####################' * 20)
-    # Testar a API para a coluna historico
-    # test_historico(time, url)
-    # # print('####################' * 20)
-    # # Testar a API para a coluna producao_total
-    # test_producao_total(time, url)
+    # Configurações de teste
+    base_url = 'http://localhost:8000'
+    
+    # Teste 1: Produção Acumulada
+    test_endpoint(
+        'data/producao_acumulada',
+        {
+            "usina": "cgh_granada",
+            "coluna": ["acumulador_energia"],
+            "periodo": "day",
+            "data_inicio": "01/09/2024",
+            "data_fim": "14/10/2024",
+            "token": "123456",
+        },
+        "Produção Acumulada - Energia"
+    )
 
+    # Teste 2: Histórico
+    test_endpoint(
+        'historico',
+        {
+            "usina": "cgh_becker",
+            "coluna": ["energia"],
+            "periodo": "day",
+            "data_inicio": "01/10/2024",
+            "data_fim": "14/10/2024",
+            "token": "123456",
+        },
+        "Histórico de Energia"
+    )
 
+    # Teste 3: Consulta
+    test_endpoint(
+        'consult',
+        {
+            "usina": "cgh_becker",
+            "coluna": ["ug01_status"],
+            "periodo": "hour",
+            "data_inicio": "08/10/2024",
+            "data_fim": "09/10/2024",
+            "token": "123456",
+        },
+        "Consulta de Status UG01"
+    )
+
+    # Teste 4: Colunas
+    test_endpoint(
+        'columns',
+        {
+            "usina": "cgh_aparecida",
+            "token": "123456",
+        },
+        "Listagem de Colunas"
+    )
+
+    # Teste 5: Produção Total
+    test_endpoint(
+        'data/producao_total',
+        {
+            "usina": "cgh_aparecida",
+            "token": "123456",
+        },
+        "Produção Total"
+    )
+
+    # Teste com diferentes períodos
+    periodos = ['hour', 'day', 'week', 'month', 'year']
+    for periodo in periodos:
+        test_endpoint(
+            'data/producao_acumulada',
+            {
+                "usina": "cgh_granada",
+                "coluna": ["acumulador_energia"],
+                "periodo": periodo,
+                "data_inicio": "01/09/2024",
+                "data_fim": "14/10/2024",
+                "token": "123456",
+            },
+            f"Produção Acumulada - Período {periodo.upper()}"
+        )
+
+    print('=' * 60)
+    print('🎯 TESTE COMPLETO!')
+    print(f'⏱️  Tempo total de execução: {time.time() - inicio:.2f} segundos')
+    print('=' * 60)
 
 # 14 - Iniciar o servidor FastAPI em um novo processo
 if __name__ == "__main__":
@@ -289,13 +201,13 @@ if __name__ == "__main__":
         server_process.start()
 
         # Espere um pouco para garantir que o servidor esteja em execução
-        time.sleep(1)
+        time.sleep(2)
 
         # Inicialize a função de teste em um novo processo
         test_process = Process(target=test_api)
         test_process.start()
 
-        time.sleep(2)
+        time.sleep(3)
         # Junte os processos para esperar que eles terminem
         test_process.join()
         server_process.terminate()

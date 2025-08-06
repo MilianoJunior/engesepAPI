@@ -5,6 +5,7 @@ import pandas as pd
 from libs.connection import Connection
 from fastapi import HTTPException
 from datetime import datetime, timedelta
+import numpy as np
 
 
 class Data:
@@ -23,10 +24,8 @@ class Data:
         # Definir os períodos
         self.periodos = {
                         'day': 'D',
-                        'week': 'W',
                         'month': 'M',
-                        'year': 'Y',
-                        'hour': 'h',
+                        'hour': 'H',
                     }
 
     def converter_dicionario(self, original):
@@ -318,7 +317,7 @@ class Data:
             df['data_hora'] = pd.to_datetime(df['data_hora'])
 
             # data_hora como índice
-            df.set_index('data_hora', inplace=True)
+            # df.set_index('data_hora', inplace=True)
 
             # criar um DataFrame para armazenar os dados da produção de energia
             df_producao = pd.DataFrame()
@@ -326,8 +325,23 @@ class Data:
             # Calcular a produção de energia para determinado periodo
             for column in df.columns:
                 if 'acumulador_energia' in column:
-                    dados = self.calculate_production(df, column, period=consulta['periodo'])
-                    df_producao[column] = dados
+                    dados = self.calculate_production(df, column, consulta['periodo'])
+                    # Corrigir: se dados é um DataFrame, precisamos extrair a coluna específica
+                    if isinstance(dados, pd.DataFrame):
+                        # Se dados tem múltiplas colunas, pegar apenas a coluna de produção
+                        colunas_producao = [col for col in dados.columns if 'prod_' in col]
+                        if colunas_producao:
+                            df_producao[column] = dados[colunas_producao[0]]
+                        else:
+                            # Se não há coluna de produção, usar a primeira coluna numérica
+                            colunas_numericas = dados.select_dtypes(include=[np.number]).columns
+                            if len(colunas_numericas) > 0:
+                                df_producao[column] = dados[colunas_numericas[0]]
+                            else:
+                                df_producao[column] = dados.iloc[:, 0]  # Primeira coluna
+                    else:
+                        # Se dados é uma série, usar diretamente
+                        df_producao[column] = dados
 
             # Substituir valores NaN antes de converter o DataFrame em um dicionário
             # df_producao.fillna(0, inplace=True)
@@ -368,41 +382,124 @@ class Data:
 
         except Exception as e:
             raise Exception(f"Erro ao retornar as colunas da tabela solicitada {e}")
+        
+    def calculate_production(self, df, colunas, periodo):
+        print(f'Periodo: {periodo}')
+        print('df.shape: ',df.shape)
+        print('colunas: ',colunas)
+        print('--'*10)
+    
+        if periodo == 'D':
+            # Para período diário, trabalhar com uma única coluna
+            if isinstance(colunas, str):
+                colunas_energia = [colunas]
+            else:
+                colunas_energia = [colunas]
+            
+            mask = (df[colunas_energia] == 103.00).any(axis=1)
+            df = df[~mask]
+            df_diario = df.groupby(df['data_hora'].dt.date).last()
+            
+            for col in colunas_energia:
+                if col in df_diario.columns:
+                    df_diario[col] = pd.to_numeric(df_diario[col], errors='coerce').astype(float)
+            
+            # Calcular a produção (diferença entre valores consecutivos)
+            producao = df_diario[colunas_energia[0]].diff().fillna(0)
+            
+            return producao
+        
+        if periodo == 'M':
+            # Para período mensal, trabalhar com uma única coluna
+            if isinstance(colunas, str):
+                colunas_energia = [colunas]
+            else:
+                colunas_energia = [colunas]
+            
+            mask = (df[colunas_energia] == 103.00).any(axis=1)
+            df = df[~mask]
+            df['ano_mes'] = df['data_hora'].dt.strftime('%Y-%m')
+            df_mensal = df.groupby('ano_mes').last()
+            
+            for col in colunas_energia:
+                if col in df_mensal.columns:
+                    df_mensal[col] = pd.to_numeric(df_mensal[col], errors='coerce').astype(float)
+            
+            if len(df_mensal) < 6:
+                last_month = df_mensal.index[0]
+                after_last_month = datetime.strptime(last_month, '%Y-%m') - timedelta(days=30)
+                after_last_month = after_last_month.strftime('%Y-%m')
+                for col in colunas_energia:
+                    df_mensal.loc[after_last_month, col] = 0
+                df_mensal = df_mensal.sort_index()
+            
+            # Calcular a produção (diferença entre valores consecutivos)
+            producao = df_mensal[colunas_energia[0]].diff().fillna(0)
+            
+            return producao
+        
+        if periodo == 'H':
+            # Para período horário, trabalhar com uma única coluna
+            if isinstance(colunas, str):
+                colunas_energia = [colunas]
+            else:
+                colunas_energia = [colunas]
+            
+            mask = (df[colunas_energia] == 103.00).any(axis=1)
+            df = df[~mask]
+            df['hora'] = df['data_hora'].dt.floor('H')  # ou .dt.round('H') se preferir arredondar
+            df_hora = df.groupby('hora').last().reset_index()
+            
+            for col in colunas_energia:
+                if col in df_hora.columns:
+                    df_hora[col] = pd.to_numeric(df_hora[col], errors='coerce').astype(float)
+            
+            # Calcular a produção (diferença entre valores consecutivos)
+            producao = df_hora[colunas_energia[0]].diff().fillna(0)
+            producao.index = df_hora['hora']
+            
+            return producao
+        
+        # Para outros períodos, retornar a coluna original
+        if isinstance(colunas, str):
+            return df[colunas]
+        else:
+            return df[colunas[0]]
 
 
-    def calculate_production(self, df, column, period):
-        '''Calcula a produção de energia corrigida para o período especificado de maneira ajustada.'''
+    # def calculate_production(self, df, column, period):
+    #     '''Calcula a produção de energia corrigida para o período especificado de maneira ajustada.'''
 
-        try:
-            # converter a column para float
-            df[column] = df[column].astype(float)
+    #     try:
+    #         # converter a column para float
+    #         df[column] = df[column].astype(float)
 
-            # define o nome da coluna
-            columnp = column + '_p'
+    #         # define o nome da coluna
+    #         columnp = column + '_p'
 
-            # Resample para o período desejado e calcula a diferença entre o primeiro e o último valor do período
-            df_resampled = df.resample(period).agg({column: ['first', 'last']})
+    #         # Resample para o período desejado e calcula a diferença entre o primeiro e o último valor do período
+    #         df_resampled = df.resample(period).agg({column: ['first', 'last']})
 
-            # Calcula a diferença entre o último e o primeiro valor para obter a produção de energia no período
-            df_resampled[columnp] = round(df_resampled[(column, 'last')] - df_resampled[(column, 'first')],3)
+    #         # Calcula a diferença entre o último e o primeiro valor para obter a produção de energia no período
+    #         df_resampled[columnp] = round(df_resampled[(column, 'last')] - df_resampled[(column, 'first')],3)
 
-            # Limpa o DataFrame para remover níveis múltiplos nas colunas
-            df_resampled.columns = ['First Value', 'Last Value', columnp]
+    #         # Limpa o DataFrame para remover níveis múltiplos nas colunas
+    #         df_resampled.columns = ['First Value', 'Last Value', columnp]
 
-            # Remove linhas onde a produção é NaN ou 0, pois isso indica que não houve produção no período
-            # df_resampled = df_resampled[df_resampled[columnp].notna()]
-            # Substituir valores NaN por 0
-            df_resampled[columnp].fillna(0, inplace=True)
+    #         # Remove linhas onde a produção é NaN ou 0, pois isso indica que não houve produção no período
+    #         # df_resampled = df_resampled[df_resampled[columnp].notna()]
+    #         # Substituir valores NaN por 0
+    #         df_resampled[columnp].fillna(0, inplace=True)
 
-            # & (df_resampled[columnp] != 0)]
+    #         # & (df_resampled[columnp] != 0)]
 
-            # exclui as colunas First Value e Last Value
-            df_resampled = df_resampled.drop(columns=['First Value', 'Last Value'])
+    #         # exclui as colunas First Value e Last Value
+    #         df_resampled = df_resampled.drop(columns=['First Value', 'Last Value'])
 
-            return df_resampled
+    #         return df_resampled
 
-        except Exception as e:
-            raise Exception(f"Erro ao calcular a produção de energia {e}")
+    #     except Exception as e:
+    #         raise Exception(f"Erro ao calcular a produção de energia {e}")
 
     def sanitize(self, consulta):
         ''' Sanitização das entradas '''

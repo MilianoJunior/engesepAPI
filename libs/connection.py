@@ -226,3 +226,4 @@ class Connection:
             return valor
         except Exception as e:
             raise Exception(f'Error convert column {e}')
+

@@ -64,11 +64,6 @@ app.post("/columns")(rotas.get_columns)
 ''' Endpoint para obter os dados da produção total de energia '''
 app.post("/data/producao_total")(rotas.get_production_all)
 
-# app.post("/data/producao_acumulada")(rotas.get_production_acumulated)
-# app.post("/historico")(rotas.get_history)
-# app.post("/consult")(rotas.get_consult)
-# app.post("/columns")(rotas.get_columns)
-# app.post("/data/producao_total")(rotas.get_production_all)
 # 12 - Iniciar o servidor FastAPI
 def run_uvicorn():
     ''' Iniciar o servidor FastAPI '''
@@ -80,10 +75,7 @@ def run_uvicorn():
 
     # iniciar o servidor FastAPI na porta 8000
     uvicorn.run("main:app", host=host, port=8000, log_level="info")
-
-# 13 - Criar a função de teste da API
-
-
+    
 # 14 - Iniciar o servidor FastAPI em um novo processo
 if __name__ == "__main__":
     ''' Função principal para executar o servidor FastAPI'''
