@@ -4,14 +4,15 @@ import json
 
 # Configuração
 BASE_URL = "http://localhost:8000"
+# BASE_URL = "https://engesepapi-production.up.railway.app"
 
 def testar_producao():
     """Testa endpoint de produção acumulada"""
-    for periodo in ["D"]: #, "M", "H"]:
+    for periodo in ["D", "M", "H"]:
         for usina in ["CGH-APARECIDA", "CGH-FAE", "PCH-PEDRAS", "CGH-PICADAS-ALTAS", "CGH-HOPPEN"]:
             payload = {
                 "usina": usina,
-                "data_inicio": "10/08/2025 00:00",
+                "data_inicio": "10/07/2025 00:00",
                 "data_fim": "13/08/2025 17:00",
                 "periodo": periodo,
                 "token": "123456"

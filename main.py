@@ -157,9 +157,13 @@ class ProducaoService:
         elif periodo == 'M':
             df['ano_mes'] = df['data_hora'].dt.strftime('%Y-%m')
             df_trat = df.groupby('ano_mes').last()
+            df_trat = df_trat.replace([np.nan, np.inf, -np.inf], None)
+            df_trat = df_trat.fillna(0).infer_objects(copy=False)
         elif periodo == 'H':
-            df['hora'] = df['data_hora'].dt.floor('H')  # ou .dt.round('H') se preferir arredondar
+            df['hora'] = df['data_hora'].dt.floor('h') 
             df_trat = df.groupby('hora').last().reset_index()
+            df_trat = df_trat.replace([np.nan, np.inf, -np.inf], None)
+            df_trat = df_trat.fillna(0).infer_objects(copy=False)
         else:
             raise ValueError(f"Período inválido: {periodo}")
         
