@@ -17,10 +17,11 @@ def run_server():
 def test_api():
     """Testa a API com diferentes endpoints"""
     
-    base_url = "http://localhost:8000"
+    base_url = "https://engesepapi-production.up.railway.app"
     
     # Lista de tokens para testar
     tokens = ["123456", "engesep", "admin", "token", "test"]
+    
     
     # Endpoints para testar
     endpoints = [
@@ -141,18 +142,19 @@ def test_api():
 if __name__ == "__main__":
     print("🔧 Iniciando servidor...")
     
-    # Iniciar servidor em processo separado
-    server_process = Process(target=run_server)
-    server_process.start()
+    # # Iniciar servidor em processo separado
+    # server_process = Process(target=run_server)
+    # server_process.start()
     
-    # Aguardar servidor inicializar
-    time.sleep(3)
+    # # Aguardar servidor inicializar
+    # time.sleep(3)
     
     try:
         # Executar testes
         test_api()
     finally:
+        pass
         # Parar servidor
-        server_process.terminate()
-        server_process.join()
-        print("�� Servidor parado.") 
+        # server_process.terminate()
+        # server_process.join()
+        # print("�� Servidor parado.") 
