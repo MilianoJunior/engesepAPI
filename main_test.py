@@ -1,6 +1,58 @@
 # test_api.py
+# from termios import OPOST
+import time
 import requests
 import json
+
+# API 1
+# rodada 1
+# Tempo de execução: 3.584033966064453 segundos
+# INFO:     127.0.0.1:50779 - "POST /producao-acumulada HTTP/1.1" 200 OK
+# Tempo de execução: 4.67785382270813 segundos
+# INFO:     127.0.0.1:50783 - "POST /producao-acumulada HTTP/1.1" 200 OK
+# Tempo de execução: 3.862225294113159 segundos
+# INFO:     127.0.0.1:50786 - "POST /producao-acumulada HTTP/1.1" 200 OK
+# Tempo de execução: 3.2053720951080322 segundos
+# INFO:     127.0.0.1:50789 - "POST /producao-acumulada HTTP/1.1" 200 OK
+# Tempo de execução: 3.766193151473999 segundos
+# rodada 2
+# Tempo de execução: 4.744945049285889 segundos
+# INFO:     127.0.0.1:50887 - "POST /producao-acumulada HTTP/1.1" 200 OK
+# Tempo de execução: 4.5644612312316895 segundos
+# INFO:     127.0.0.1:50890 - "POST /producao-acumulada HTTP/1.1" 200 OK
+# Tempo de execução: 4.009774684906006 segundos
+# INFO:     127.0.0.1:50893 - "POST /producao-acumulada HTTP/1.1" 200 OK
+# Tempo de execução: 3.3909690380096436 segundos
+# INFO:     127.0.0.1:50896 - "POST /producao-acumulada HTTP/1.1" 200 OK
+# Tempo de execução: 3.855095624923706 segundos
+# INFO:     127.0.0.1:50899 - "OPOST /producao-acumulada HTTP/1.1" 200 OK
+# Tempo de execução: 29.99523091316223 segundos
+# Tempo de execução: 29.378562211990356 segundos
+
+
+
+# API 2
+# rodada 1
+# Tempo de execução: 3.7971107959747314 segundos
+# INFO:     127.0.0.1:50606 - "POST /producao-acumulada HTTP/1.1" 200 OK
+# Tempo de execução: 4.234118700027466 segundos
+# INFO:     127.0.0.1:50609 - "POST /producao-acumulada HTTP/1.1" 200 OK
+# Tempo de execução: 5.101615905761719 segundos
+# INFO:     127.0.0.1:50612 - "POST /producao-acumulada HTTP/1.1" 200 OK
+# Tempo de execução: 3.9254415035247803 segundos
+# INFO:     127.0.0.1:50615 - "POST /producao-acumulada HTTP/1.1" 200 OK
+# Tempo de execução: 4.270882606506348 segundos
+# rodada 2
+# Tempo de execução: 3.941045045852661 segundos
+# INFO:     127.0.0.1:50921 - "POST /producao-acumulada HTTP/1.1" 200 OK
+# Tempo de execução: 3.864314079284668 segundos
+# INFO:     127.0.0.1:50924 - "POST /producao-acumulada HTTP/1.1" 200 OK
+# Tempo de execução: 3.7361345291137695 segundos
+# INFO:     127.0.0.1:50927 - "POST /producao-acumulada HTTP/1.1" 200 OK
+# Tempo de execução: 3.293816089630127 segundos
+# INFO:     127.0.0.1:50930 - "POST /producao-acumulada HTTP/1.1" 200 OK
+# Tempo de execução: 4.799042224884033 segundos
+# Tempo de execução: 31.324167251586914 segundos
 
 # Configuração
 BASE_URL = "http://localhost:8000"
@@ -8,7 +60,8 @@ BASE_URL = "http://localhost:8000"
 
 def testar_producao():
     """Testa endpoint de produção acumulada"""
-    for periodo in ["D", "M", "H"]:
+    inicio = time.time()
+    for periodo in ["M"]: #, "M", "H"]:
         for usina in ["CGH-APARECIDA", "CGH-FAE", "PCH-PEDRAS", "CGH-PICADAS-ALTAS", "CGH-HOPPEN"]:
             payload = {
                 "usina": usina,
@@ -42,6 +95,8 @@ def testar_producao():
             except Exception as e:
                 print(f"Erro na requisição para {usina}: {e}")
                 print("-" * 50)
+    fim = time.time()
+    print(f"Tempo de execução: {fim - inicio} segundos")
 
 if __name__ == "__main__":
     testar_producao()
