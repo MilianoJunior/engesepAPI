@@ -150,48 +150,120 @@ class DatabaseService:
             df_ = df_[~mask_]
         return df_
 
+# producao_service.py (trecho)
+# import numpy as np
+# import pandas as pd
+
 class ProducaoService:
     def calcular_producao(self, df: pd.DataFrame, periodo: str, usina: str) -> dict:
         if df.empty:
             return {"status": "sem_dados", "usina": usina, "mensagem": "Nenhum dado encontrado."}
-        
-        if periodo == 'D':
-            df_trat = df.groupby(df['data_hora'].dt.date).last()
-        elif periodo == 'M':
-            df_temp = df.copy()
-            df_temp['ano_mes'] = df_temp['data_hora'].dt.strftime('%Y-%m')
-            df_trat = df_temp.groupby('ano_mes').last()
-            df_trat = df_trat.replace([np.nan, np.inf, -np.inf], None).fillna(0)
-        elif periodo == 'H':
-            df_trat = df.groupby(df['data_hora'].dt.floor('h')).last().reset_index()
-            df_trat = df_trat.replace([np.nan, np.inf, -np.inf], None).fillna(0)
-        else:
-            raise ValueError(f"Período inválido: {periodo}")
-        
+
+        # Garante ordenação e datetime
+        df = df.copy()
+        df['data_hora'] = pd.to_datetime(df['data_hora'])
+        df = df.sort_values('data_hora')
+
+        # Identifica colunas de energia (acumuladas)
         if len(USINAS_CONFIG[usina]['tabelas']) > 1:
-            colunas_energia = [f'ug{i+1:02d}_{col}' for i,col in enumerate(USINAS_CONFIG[usina]['energia'])]
+            colunas_energia = [f'ug{i+1:02d}_{col}' for i, col in enumerate(USINAS_CONFIG[usina]['energia'])]
         else:
             colunas_energia = USINAS_CONFIG[usina]['energia']
 
+        # Remover sentinelas/ruídos se necessário (ex.: 103.00)
+        # df = df[~(df[colunas_energia] == 103.00).any(axis=1)]
+
+        # Seleciona frequência de agregação
+        periodo = periodo.upper()
+        if periodo in ('D', 'DIARIO', 'DAY'):
+            freq = 'D'
+        elif periodo in ('H', 'HORARIO', 'HOUR'):
+            freq = 'h'
+        elif periodo in ('M', 'MENSAL', 'MONTH'):
+            freq = 'MS'  # mês (início)
+        else:
+            raise ValueError(f"Período inválido: {periodo}")
+
+        # Indexa e agrega por janela pegando first e last
+        df_idx = df.set_index('data_hora')
+        # limita às colunas de energia existentes
+        cols_existentes = [c for c in colunas_energia if c in df_idx.columns]
+        if not cols_existentes:
+            return {"status": "sem_dados", "usina": usina, "mensagem": "Sem colunas de energia no período."}
+
+        agg = df_idx[cols_existentes].groupby(pd.Grouper(freq=freq)).agg(['first', 'last'])
+
+        # Calcula delta = last - first para cada coluna, por janela
         resultado_json = {}
-        
-        for col in colunas_energia:
-            if col in df_trat.columns:
-                valores = df_trat[col].values
-                if len(valores) > 1:
-                    diferencas = np.diff(valores)
-                    diferencas_arredondadas = np.round(diferencas, 2)
-                    
-                    resultado_json[col] = [
-                        {'data': df_trat.index[i], 'producao_Mwh': float(diferencas_arredondadas[i-1])}
-                        for i in range(1, len(df_trat))
-                    ]
-                else:
-                    resultado_json[col] = []
-            else:
-                resultado_json[col] = []
+        for col in cols_existentes:
+            serie_first = agg[(col, 'first')]
+            serie_last  = agg[(col, 'last')]
+
+            delta = (serie_last - serie_first).clip(lower=0)  # evita negativos em caso de reset
+            delta = delta.round(2).dropna()
+
+            # Monta saída no formato esperado
+            if freq == 'D' or freq == 'H':
+                # datas em ISO (date ou datetime “cheio”)
+                items = []
+                for idx, val in delta.items():
+                    if freq == 'D':
+                        data_out = idx.date().isoformat()
+                    else:
+                        data_out = idx.isoformat()
+                    items.append({'data': data_out, 'producao_Mwh': float(val)})
+                resultado_json[col] = items
+            elif freq == 'MS':
+                # mensal: usa AAAA-MM
+                resultado_json[col] = [
+                    {'data': idx.strftime('%Y-%m'), 'producao_Mwh': float(val)}
+                    for idx, val in delta.items()
+                ]
 
         return {'usina': usina, 'periodo': periodo, 'resultado': resultado_json}
+
+# class ProducaoService:
+#     def calcular_producao(self, df: pd.DataFrame, periodo: str, usina: str) -> dict:
+#         if df.empty:
+#             return {"status": "sem_dados", "usina": usina, "mensagem": "Nenhum dado encontrado."}
+        
+#         if periodo == 'D':
+#             df_trat = df.groupby(df['data_hora'].dt.date).last()
+#         elif periodo == 'M':
+#             df_temp = df.copy()
+#             df_temp['ano_mes'] = df_temp['data_hora'].dt.strftime('%Y-%m')
+#             df_trat = df_temp.groupby('ano_mes').last()
+#             df_trat = df_trat.replace([np.nan, np.inf, -np.inf], None).fillna(0)
+#         elif periodo == 'H':
+#             df_trat = df.groupby(df['data_hora'].dt.floor('h')).last().reset_index()
+#             df_trat = df_trat.replace([np.nan, np.inf, -np.inf], None).fillna(0)
+#         else:
+#             raise ValueError(f"Período inválido: {periodo}")
+        
+#         if len(USINAS_CONFIG[usina]['tabelas']) > 1:
+#             colunas_energia = [f'ug{i+1:02d}_{col}' for i,col in enumerate(USINAS_CONFIG[usina]['energia'])]
+#         else:
+#             colunas_energia = USINAS_CONFIG[usina]['energia']
+
+#         resultado_json = {}
+        
+#         for col in colunas_energia:
+#             if col in df_trat.columns:
+#                 valores = df_trat[col].values
+#                 if len(valores) > 1:
+#                     diferencas = np.diff(valores)
+#                     diferencas_arredondadas = np.round(diferencas, 2)
+                    
+#                     resultado_json[col] = [
+#                         {'data': df_trat.index[i], 'producao_Mwh': float(diferencas_arredondadas[i-1])}
+#                         for i in range(1, len(df_trat))
+#                     ]
+#                 else:
+#                     resultado_json[col] = [valores[0] - valores[-1]]
+#             else:
+#                 resultado_json[col] = []
+
+#         return {'usina': usina, 'periodo': periodo, 'resultado': resultado_json}
 
 # ======================== API E ROTAS ========================
 
@@ -209,8 +281,23 @@ def producao_acumulada(request: ProducaoRequest):
     if request.token and request.token != os.getenv('API_TOKEN', '123456'):
         raise HTTPException(status_code=401, detail="Token inválido")
     try:
+        print('--------------------------------')
+        print('request.usina: ', request.usina, type(request.usina))
+        print('request.data_inicio: ', request.data_inicio, type(request.data_inicio))
+        print('request.data_fim: ', request.data_fim, type(request.data_fim))
+        print('request.periodo: ', request.periodo, type(request.periodo))
+        print('--------------------------------')
+        data_inicio = request.data_inicio
+        data_fim = request.data_fim
+        # verifica se a data e data fim sao do mesmo mes
         df = db_service.buscar_dados_usina_otimizada(request.usina, request.data_inicio, request.data_fim, request.periodo)
+        print('--------------------------------')
+        print('df: ', df, type(df))
+        print('--------------------------------')
         resultado = producao_service.calcular_producao(df, request.periodo, request.usina)
+        print('--------------------------------')
+        print('resultado: ', resultado)
+        print('--------------------------------')
         return resultado
     except Exception as e:
         print(f"Erro inesperado: {e}")
@@ -234,3 +321,8 @@ def health_check():
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000)
+
+'''
+
+
+'''

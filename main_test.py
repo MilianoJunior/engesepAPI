@@ -62,11 +62,11 @@ def testar_producao():
     """Testa endpoint de produção acumulada"""
     inicio = time.time()
     for periodo in ["M"]: #, "M", "H"]:
-        for usina in ["CGH-APARECIDA", "CGH-FAE", "PCH-PEDRAS", "CGH-PICADAS-ALTAS", "CGH-HOPPEN"]:
+        for usina in ["CGH-APARECIDA"]: # "CGH-FAE", "PCH-PEDRAS", "CGH-PICADAS-ALTAS", "CGH-HOPPEN"]:
             payload = {
                 "usina": usina,
-                "data_inicio": "10/07/2025 00:00",
-                "data_fim": "13/08/2025 17:00",
+                "data_inicio": "01/08/2025 00:00",
+                "data_fim": "14/08/2025 17:00",
                 "periodo": periodo,
                 "token": "123456"
             }
