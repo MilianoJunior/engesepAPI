@@ -1,0 +1,313 @@
+# -------------------------------------------------------------------
+# FLUXO DO MÓDULO
+# 1. carregar_config              → lê config/usinas.json e retorna dict
+# 2. __init__                     → recebe config de usinas e instância de Database
+# 3. buscar_dados_usina           → monta queries, busca no banco, merge multi-tabela
+# 4. buscar_por_grupo             → consulta colunas de um grupo específico
+# 5. _montar_query                → gera SQL conforme período (mensal com CTE ou padrão)
+# 6. _tratar_dataframe            → cast tipos, remove negativos e sentinela 103.00
+# 7. _renomear_coluna_multi_ug    → renomeia coluna com prefixo ugXX_ e arredonda data_hora
+# 8. _merge_dataframes            → merge outer de múltiplos DataFrames por data_hora
+# -------------------------------------------------------------------
+
+import json
+import os
+import re
+import time
+import pandas as pd
+from libs.db import Database
+from libs.cache_store import CacheStore
+
+# ======================== CONFIGURAÇÃO ========================
+
+CONFIG_PATH = os.path.join(os.path.dirname(__file__), '..', 'config', 'usinas.json')
+
+GRUPOS_IGNORADOS = {'descricao', 'tabelas', 'identificacao', '_obs'}
+
+
+def carregar_config(path: str = CONFIG_PATH) -> dict:
+    """Lê config/usinas.json e retorna dict."""
+    with open(path, 'r', encoding='utf-8') as f:
+        return json.load(f)
+
+
+USINAS_CONFIG = carregar_config()
+
+# ======================== MODEL ========================
+
+class UsinaModel:
+    def __init__(self, db: Database, config: dict = None):
+        self.db = db
+        self.config = config or USINAS_CONFIG
+        self.cache_enabled = os.getenv('USINA_CACHE_ENABLED', '1').strip().lower() in {'1', 'true', 'yes', 'on'}
+        self.cache_ttl_seconds = int(os.getenv('USINA_CACHE_TTL_SECONDS', '60'))
+        self.connection_idle_ttl_seconds = int(os.getenv('USINA_CONN_IDLE_TTL_SECONDS', '180'))
+        self._connection_last_used_at = None
+
+    def buscar_dados_usina(self, usina: str, data_inicio: str, data_fim: str, periodo: str = 'D') -> pd.DataFrame:
+        """
+        Busca apenas dados de Energia Acumulada para uso na rota /producao-acumulada.
+        Retorna DataFrame com coluna data_hora e colunas normalizadas:
+        - UG-01 Energia Acumulada
+        - UG-02 Energia Acumulada
+        """
+        cfg = self.config[usina]
+        mapa_energia = cfg['energia']
+        periodo = (periodo or 'D').upper()[0]
+        query_periodo = self._resolver_periodo_base(periodo)
+        cache_key = self._cache_key_dados_usina_base(usina, data_inicio, data_fim, query_periodo)
+
+        if self.cache_enabled:
+            cache_df = CacheStore.get(cache_key)
+            if cache_df is not None:
+                return cache_df.copy(deep=False)
+
+        dfs = self._coletar_dataframes(
+            tabelas=cfg['tabelas'],
+            mapa_colunas=mapa_energia,
+            data_inicio=data_inicio,
+            data_fim=data_fim,
+            periodo=query_periodo,
+            preparar_energia=True,
+        )
+        resultado = self._merge_dataframes(dfs)
+        if self.cache_enabled:
+            CacheStore.set(cache_key, resultado, ttl_seconds=self.cache_ttl_seconds)
+        return resultado.copy(deep=False)
+
+    def buscar_por_grupo(self, usina: str, grupo: str, data_inicio: str, data_fim: str) -> pd.DataFrame:
+        """Consulta colunas de um grupo específico (energia, temperaturas, etc.)."""
+        cfg = self.config[usina]
+        tabelas = cfg['tabelas']
+        mapa = cfg.get(grupo, {})
+        if not isinstance(mapa, dict):
+            return pd.DataFrame()
+
+        dfs = self._coletar_dataframes(
+            tabelas=tabelas,
+            mapa_colunas=mapa,
+            data_inicio=data_inicio,
+            data_fim=data_fim,
+            periodo='H',
+            preparar_energia=False,
+        )
+        return self._merge_dataframes(dfs)
+
+    def _coletar_dataframes(
+        self,
+        tabelas: list[str],
+        mapa_colunas: dict,
+        data_inicio: str,
+        data_fim: str,
+        periodo: str,
+        preparar_energia: bool,
+    ) -> list[pd.DataFrame]:
+        """
+        Coleta DataFrames de um mapa de colunas por tabela.
+        Suporta:
+        - usina com 1 tabela e múltiplas UGs (múltiplas colunas na mesma query)
+        - usina com múltiplas tabelas e 1 UG por tabela (merge posterior por data_hora)
+        """
+        dfs = []
+        self._garantir_conexao()
+        for tabela in tabelas:
+            colunas = mapa_colunas.get(tabela, [])
+            if not colunas:
+                continue
+
+            query = self._montar_query(tabela, colunas, data_inicio, data_fim, periodo)
+            df_temp = self.db.fetch_dataframe(query)
+            self._touch_connection()
+
+            if df_temp.empty:
+                continue
+
+            if preparar_energia:
+                df_temp = self._tratar_dataframe(df_temp)
+                if df_temp.empty:
+                    continue
+                df_temp = self._normalizar_colunas_energia_acumulada(df_temp)
+                if df_temp.empty:
+                    continue
+
+            dfs.append(df_temp)
+
+        return dfs
+
+    def _montar_query(self, tabela: str, colunas: list, data_inicio: str, data_fim: str, periodo: str) -> str:
+        """Gera SQL. Período mensal usa CTE com ROW_NUMBER para pegar bordas do mês."""
+        col_str = ', '.join(colunas)
+
+        if periodo == 'M':
+            base_select_cols = []
+            outer_select_cols = []
+
+            for i, coluna in enumerate(colunas, start=1):
+                expr, alias = self._split_coluna_expr(coluna)
+                alias_interno = f'energia_{i}'
+                base_select_cols.append(f'{expr} AS {alias_interno}')
+                if alias:
+                    outer_select_cols.append(f"{alias_interno} AS '{alias}'")
+                else:
+                    outer_select_cols.append(alias_interno)
+
+            base_cols_str = ',\n                    '.join(base_select_cols)
+            outer_cols_str = ', '.join(outer_select_cols)
+
+            return f"""WITH base AS (
+                SELECT
+                    data_hora,
+                    {base_cols_str},
+                    DATE_FORMAT(data_hora, '%Y-%m-01') AS mes_ini,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY YEAR(data_hora), MONTH(data_hora)
+                        ORDER BY data_hora ASC
+                    ) AS rn_asc,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY YEAR(data_hora), MONTH(data_hora)
+                        ORDER BY data_hora DESC
+                    ) AS rn_desc
+                FROM {tabela}
+                WHERE data_hora >= '{data_inicio}' AND data_hora <= '{data_fim}'
+            ),
+            filtrada AS (
+                SELECT * FROM base
+                WHERE rn_asc <= 10 OR rn_desc <= 10
+            )
+            SELECT data_hora, {outer_cols_str}
+            FROM filtrada
+            ORDER BY data_hora"""
+
+        return (
+            f'SELECT data_hora, {col_str} FROM {tabela} '
+            f'WHERE data_hora >= "{data_inicio}" AND data_hora <= "{data_fim}" '
+            f'ORDER BY data_hora'
+        )
+
+    def _garantir_conexao(self):
+        """Reutiliza conexão aberta quando possível e reconecta se necessário."""
+        if self._conexao_expirada_por_inatividade():
+            self.db.close()
+
+        conn = self.db.connection
+        if conn is None:
+            self.db.connect()
+            self._touch_connection()
+            return
+
+        try:
+            if not conn.is_connected():
+                self.db.connect()
+                self._touch_connection()
+                return
+            conn.ping(reconnect=True, attempts=1, delay=0)
+            self._touch_connection()
+        except Exception:
+            self.db.connect()
+            self._touch_connection()
+
+    def _touch_connection(self):
+        self._connection_last_used_at = time.time()
+
+    def _conexao_expirada_por_inatividade(self) -> bool:
+        if self.connection_idle_ttl_seconds <= 0:
+            return False
+        if self._connection_last_used_at is None:
+            return False
+        return (time.time() - self._connection_last_used_at) > self.connection_idle_ttl_seconds
+
+    def _resolver_periodo_base(self, periodo: str) -> str:
+        # H, D e M podem compartilhar a mesma consulta base de energia acumulada.
+        if periodo in {'H', 'D', 'M'}:
+            return 'H'
+        return periodo
+
+    def _cache_key_dados_usina_base(self, usina: str, data_inicio: str, data_fim: str, query_periodo: str) -> str:
+        return f"usina_dados_base:{usina}|{query_periodo}|{data_inicio}|{data_fim}"
+
+    def _split_coluna_expr(self, coluna: str) -> tuple[str, str | None]:
+        """
+        Divide expressão SQL em (expressão, alias), quando existir.
+        """
+        partes = re.split(r'\s+as\s+', coluna, maxsplit=1, flags=re.IGNORECASE)
+        expr = partes[0].strip()
+        if len(partes) == 1:
+            return expr, None
+        alias = partes[1].strip().strip("`'\"")
+        return expr, alias
+
+    def _tratar_dataframe(self, df: pd.DataFrame) -> pd.DataFrame:
+        """Padroniza tipos e remove registros inválidos para cálculo de produção."""
+        if df.empty:
+            return df
+
+        df = df.copy()
+        if 'data_hora' in df.columns:
+            df['data_hora'] = pd.to_datetime(df['data_hora'], errors='coerce')
+            df = df[df['data_hora'].notna()]
+
+        colunas_numericas = [c for c in df.columns if c != 'data_hora']
+        for col in colunas_numericas:
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+
+        if not colunas_numericas:
+            return df
+
+        mask_numerico = df[colunas_numericas].notna().all(axis=1)
+        mask_positivo = (df[colunas_numericas] >= 0).all(axis=1)
+        mask_sentinela = (df[colunas_numericas] == 103.00).any(axis=1)
+
+        df = df[mask_numerico & mask_positivo & ~mask_sentinela]
+        return df
+
+    def _eh_coluna_energia_acumulada(self, nome_coluna: str) -> bool:
+        nome = nome_coluna.lower()
+        return 'energia' in nome and ('acumul' in nome or 'acum_' in nome or 'acum' in nome)
+
+    def _normalizar_colunas_energia_acumulada(self, df: pd.DataFrame) -> pd.DataFrame:
+        """
+        Mantém apenas data_hora + Energia Acumulada, normalizando para:
+        - UG-01 Energia Acumulada
+        - UG-02 Energia Acumulada
+        """
+        colunas_energia = [
+            c for c in df.columns
+            if c != 'data_hora' and self._eh_coluna_energia_acumulada(c)
+        ]
+        if not colunas_energia:
+            colunas_energia = [c for c in df.columns if c != 'data_hora']
+
+        df = df[['data_hora', *colunas_energia]].copy()
+
+        renomear = {}
+        nomes_usados = set()
+        for idx, coluna in enumerate(colunas_energia, start=1):
+            ug_match = re.search(r'ug[-_\s]?0?(\d+)', coluna, flags=re.IGNORECASE)
+            ug_num = int(ug_match.group(1)) if ug_match else idx
+            nome_base = f'UG-{ug_num:02d} Energia Acumulada'
+
+            nome_final = nome_base
+            sufixo = 2
+            while nome_final in nomes_usados:
+                nome_final = f'{nome_base} ({sufixo})'
+                sufixo += 1
+
+            nomes_usados.add(nome_final)
+            renomear[coluna] = nome_final
+
+        df = df.rename(columns=renomear)
+        if 'data_hora' in df.columns:
+            df['data_hora'] = pd.to_datetime(df['data_hora'], errors='coerce').dt.floor('min')
+            df = df[df['data_hora'].notna()]
+
+        return df
+
+    def _merge_dataframes(self, dfs: list) -> pd.DataFrame:
+        """Merge outer de DataFrames por data_hora. Retorna vazio se lista vazia."""
+        if not dfs:
+            return pd.DataFrame()
+        df_base = dfs[0]
+        for df_temp in dfs[1:]:
+            df_base = pd.merge(df_base, df_temp, on='data_hora', how='outer')
+
+        return df_base.sort_values('data_hora').reset_index(drop=True)
