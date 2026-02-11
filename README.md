@@ -1,4 +1,3 @@
-````markdown
 # ⚡ ENGESEP API - Monitoramento de Geração
 
 API desenvolvida em **FastAPI** e **Pandas** para monitoramento e cálculo de produção de energia em usinas hidrelétricas.
@@ -9,120 +8,209 @@ A arquitetura utiliza uma camada de abstração via JSON (`config/usinas.json`) 
 
 ## 📂 Estrutura do Projeto
 
-O projeto segue uma arquitetura modular, separando configuração, lógica de negócio e acesso a dados.
-
 ```text
 /
 ├── config/
-│   └── usinas.json       # Mapeamento de tabelas, colunas e aliases (Fonte de Verdade)
+│   └── usinas.json                # Mapeamento de tabelas, colunas e aliases
 ├── libs/
-│   ├── db.py             # Conexão com MySQL e consultas dinâmicas baseadas no JSON
-│   ├── calculos.py       # Lógica de negócio (Pandas: Agregações, Filtros, Diff)
-│   ├── utils.py          # Utilitários de data e formatação
-│   └── usina_model.py    # UsinaModel (consulta ao banco) e USINAS_CONFIG
-├── main.py               # Entrypoint da aplicação (Rotas FastAPI)
-├── railway.json          # Configuração de deploy (Railway)
-└── requirements.txt      # Dependências do projeto
-```
-````
-
----
-
-## ⚙️ Configuração (JSON Abstraction)
-
-A API não possui nomes de colunas _hardcoded_. Toda a tradução do banco de dados para a API é feita no arquivo `config/usinas.json`.
-
-**Exemplo de configuração para Energia:**
-
-```json
-"CGH-APARECIDA": {
-    "tabelas": ["cgh_aparecida"],
-    "energia": {
-        "cgh_aparecida": ["acumulador_energia as 'UG-01 Energia Acumulada'"]
-    }
-}
-
+│   ├── db.py                      # Conexão MySQL e queries dinâmicas
+│   ├── usina_model.py             # UsinaModel (consulta energia) + USINAS_CONFIG
+│   ├── telemetria_model.py        # TelemetriaModel (consulta sensor/grupo bruto)
+│   ├── processador_telemetria.py  # Filtro outliers (IQR) + resolução automática
+│   ├── calculos.py                # Cálculo de produção de energia
+│   ├── cache_store.py             # Cache em memória com TTL
+│   └── utils.py                   # Utilitários de data e formatação
+├── teste/
+│   ├── test_telemetria_model.py   # Fase 1: testes do TelemetriaModel
+│   ├── test_telemetria_fase2.py   # Fase 2: testes outliers + resolução
+│   ├── test_api_fase3.py          # Fase 3: testes das rotas HTTP
+│   ├── visualizar_sensores.py     # Streamlit: visualização Fase 1
+│   └── visualizar_fase2.py        # Streamlit: visualização Fase 2 (Plotly)
+├── main.py                        # Entrypoint (rotas FastAPI)
+├── railway.json                   # Deploy Railway
+└── requirements.txt               # Dependências
 ```
 
 ---
 
-## 🧠 Lógica de Cálculo de Produção (`libs/calculos.py`)
+## 🏗️ Arquitetura
 
-O cálculo de produção **não é uma leitura direta**. Ele deriva a produção a partir de acumuladores brutos, aplicando limpeza de ruído e diferenciação temporal.
+```
+┌────────────────┐     ┌──────────────────────┐     ┌────────────────────────┐
+│   main.py      │     │  TelemetriaModel      │     │  ProcessadorTelemetria  │
+│  (Rotas API)   │────▶│  (Consulta bruta)     │────▶│  (Outliers + Resample) │
+└────────────────┘     └──────────────────────┘     └────────────────────────┘
+        │                                                        │
+        │              ┌──────────────────────┐                  │
+        │              │  UsinaModel          │                  │
+        └─────────────▶│  (Energia acumulada) │──▶ Calculos.py   │
+                       └──────────────────────┘                  │
+                                                                 ▼
+                                                          DataFrame final
+```
 
-### 1. Pipeline de Pré-Processamento
-
-Antes de qualquer cálculo, os dados brutos passam por este tratamento rigoroso:
-
-1. **Merge de Tabelas:** Para usinas com tabelas separadas por Unidade Geradora (ex: PCH Pedras), os dados são unificados usando o `data_hora` como chave.
-2. **Filtro de Ruído Baixo:** Registros com acumulador `< 10` são descartados (indica erro de leitura/reset).
-3. **Offset (Regra de Negócio):**
-
-- **Apenas CGH Aparecida:** É somado o valor fixo de `9971.39` ao acumulador bruto antes do processamento.
-
-4. **Filtro de Erro de Sensor:** Registros com valor exato de `103.00` são removidos **antes** do agrupamento.
-
-### 2. Algoritmo de Agregação
-
-A produção é calculada pela diferença (`.diff()`) entre o último valor de um período e o último do anterior.
-
-| Período           | Lógica de Agrupamento                      | Método de Seleção                   |
-| ----------------- | ------------------------------------------ | ----------------------------------- |
-| **Horário ('H')** | `data_hora` arredondada (`floor('h')`)     | `.last()` (Último registro da hora) |
-| **Diário ('D')**  | `data_hora` convertida p/ data (`dt.date`) | `.last()` (Último registro do dia)  |
-| **Mensal ('M')**  | Chave `YYYY-MM`                            | `.last()` (Último registro do mês)  |
-
-> **Nota:** Utilizamos `.last()` porque o acumulador é sempre crescente. O último valor do período representa o total acumulado até aquele momento.
+- **Model** → só consulta SQL, retorna DataFrame bruto
+- **Processador** → filtra outliers + calcula resolução + resample
+- **Calculos** → lógica de negócio (produção de energia)
 
 ---
 
-## 🚀 Como Rodar Localmente
+## ⚙️ Processamento de Telemetria (`libs/processador_telemetria.py`)
 
-### Pré-requisitos
+### Filtro de Outliers (IQR)
 
-- Python 3.10+
-- MySQL Database
+- Calcula Q1, Q3 e IQR por coluna
+- Valores fora de `[Q1 - 1.5*IQR, Q3 + 1.5*IQR]` são **substituídos** pelo último valor válido (`ffill`)
+- **Não perde registros** — mantém a janela temporal intacta
+- Grupos do tipo `status` não são filtrados
 
-### 1. Instalação
+### Resolução Automática
 
-```bash
-# Clone o repositório
-git clone <url-do-repo>
+O cliente envia apenas `data_inicio` e `data_fim`. A API decide a resolução:
 
-# Crie um ambiente virtual
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-venv\Scripts\activate     # Windows
-
-# Instale as dependências
-pip install -r requirements.txt
-
-```
-
-### 2. Variáveis de Ambiente (.env)
-
-Crie um arquivo `.env` na raiz:
-
-```env
-MYSQLHOST=localhost
-MYSQLUSER=root
-MYSQLPASSWORD=sua_senha
-MYSQLDATABASE=nome_do_banco
-MYSQLPORT=3306
-API_TOKEN=seu_token_seguro
-
-```
-
-### 3. Execução
-
-```bash
-uvicorn main:app --reload
-
-```
+| Intervalo Solicitado | Resolução (Resample) |
+| :------------------- | :------------------- |
+| ≤ 1 hora             | 1min (dados brutos)  |
+| ≤ 1 dia              | 15min                |
+| > 1 dia              | 30min                |
 
 ---
 
 ## 📡 Endpoints
+
+### `GET /health`
+
+Health check do banco de dados.
+
+```json
+{ "status": "operacional", "database": "conectado" }
+```
+
+---
+
+### `GET /usinas`
+
+Lista todas as usinas configuradas.
+
+---
+
+### `GET /grupos/{usina}`
+
+Lista grupos e variáveis disponíveis para a usina.
+
+**Exemplo:** `GET /grupos/CGH-APARECIDA`
+
+```json
+{
+  "potencia": ["UG-01 Potência Ativa"],
+  "temperaturas": ["UG-01 Temp. Óleo UHLM", "UG-01 Temp. Mancal Guia"],
+  "energia": ["UG-01 Energia Acumulada"]
+}
+```
+
+---
+
+### `POST /sensor-usina`
+
+Consulta **sensor individual** com filtro de outliers e resolução automática.
+
+**Body:**
+
+```json
+{
+  "usina": "CGH-APARECIDA",
+  "variavel": "UG-01 Potência Ativa",
+  "data_inicio": "15/01/2026 00:00",
+  "data_fim": "16/01/2026 00:00",
+  "token": "seu_token"
+}
+```
+
+**Response:**
+
+```json
+{
+  "usina": "CGH-APARECIDA",
+  "variavel": "UG-01 Potência Ativa",
+  "registros": 96,
+  "dados": [
+    { "data_hora": "2026-01-15T00:00:00", "UG-01 Potência Ativa": 120.5 },
+    { "data_hora": "2026-01-15T00:15:00", "UG-01 Potência Ativa": 118.3 }
+  ]
+}
+```
+
+---
+
+### `POST /grupo-usina`
+
+Consulta **grupo de variáveis** (ex: todas as temperaturas) com filtro e resolução.
+
+**Body:**
+
+```json
+{
+  "usina": "CGH-APARECIDA",
+  "grupo": "temperaturas",
+  "data_inicio": "15/01/2026 00:00",
+  "data_fim": "16/01/2026 00:00",
+  "token": "seu_token"
+}
+```
+
+**Response:**
+
+```json
+{
+  "usina": "CGH-APARECIDA",
+  "grupo": "temperaturas",
+  "registros": 96,
+  "dados": [
+    {
+      "data_hora": "2026-01-15T00:00:00",
+      "UG-01 Temp. Óleo UHLM": 35.1,
+      "UG-01 Temp. Mancal Guia": 42.0
+    }
+  ]
+}
+```
+
+---
+
+### `POST /tabela-usina`
+
+Retorna **todas as colunas** de todas as tabelas da usina, filtrado apenas por data. Sem filtro de outliers nem resample.
+
+**Body:**
+
+```json
+{
+  "usina": "CGH-APARECIDA",
+  "data_inicio": "15/01/2026 08:00",
+  "data_fim": "15/01/2026 09:00",
+  "token": "seu_token"
+}
+```
+
+**Response:**
+
+```json
+{
+  "usina": "CGH-APARECIDA",
+  "registros": 60,
+  "tabelas": ["cgh_aparecida"],
+  "dados": [
+    {
+      "data_hora": "2026-01-15T08:00:00",
+      "coluna1": 1.0,
+      "coluna2": 2.0,
+      "_tabela": "cgh_aparecida"
+    }
+  ]
+}
+```
+
+---
 
 ### `POST /producao-acumulada`
 
@@ -140,40 +228,71 @@ Calcula a geração de energia por período.
 }
 ```
 
-> **Formato obrigatório das datas:** `DD/MM/YYYY HH:mm`. Qualquer outro formato retorna `422`.
+> **Formato obrigatório das datas:** `DD/MM/YYYY HH:mm`.
 >
 > **Opções de período:** `"H"` (Hora), `"D"` (Dia), `"M"` (Mês).
->
-> **Token:** Opcional. Se enviado, deve corresponder ao `API_TOKEN` do `.env`.
 
-**Response:**
+---
 
-```json
-{
-  "usina": "CGH-APARECIDA",
-  "periodo": "D",
-  "resultado": [
-    {
-      "data": "2025-08-01",
-      "prod_UG-01 Energia Acumulada": 12.5
-    },
-    {
-      "data": "2025-08-02",
-      "prod_UG-01 Energia Acumulada": 11.8
-    }
-  ]
-}
+## 🧪 Como Testar
+
+```bash
+# Fase 1: Model (consulta bruta)
+python -m teste.test_telemetria_model
+
+# Fase 2: Processador (outliers + resolução)
+python -m teste.test_telemetria_fase2
+
+# Fase 3: Rotas da API (requer uvicorn rodando)
+uvicorn main:app --reload  # terminal 1
+python -m teste.test_api_fase3  # terminal 2
+
+# Visualização (Streamlit)
+streamlit run teste/visualizar_fase2.py
+```
+
+---
+
+## 🚀 Como Rodar Localmente
+
+### Pré-requisitos
+
+- Python 3.10+
+- MySQL Database
+
+### 1. Instalação
+
+```bash
+git clone <url-do-repo>
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+### 2. Variáveis de Ambiente (.env)
+
+```env
+MYSQLHOST=localhost
+MYSQLUSER=root
+MYSQLPASSWORD=sua_senha
+MYSQLDATABASE=nome_do_banco
+MYSQLPORT=3306
+API_TOKEN=seu_token_seguro
+```
+
+### 3. Execução
+
+```bash
+uvicorn main:app --reload
 ```
 
 ---
 
 ## 🛠 Stack Tecnológico
 
-- **FastAPI**: Framework web de alta performance.
-- **Pandas**: Manipulação de séries temporais e DataFrames.
-- **MySQL Connector/SQLAlchemy**: Conexão com banco de dados.
-- **Pydantic**: Validação de dados e serialização.
-
-```
-
-```
+- **FastAPI** — Framework web de alta performance
+- **Pandas** — Manipulação de séries temporais
+- **Plotly** — Visualização (Streamlit)
+- **MySQL Connector** — Conexão com banco
+- **Pydantic** — Validação de dados
+- **Streamlit** — Dashboards de teste

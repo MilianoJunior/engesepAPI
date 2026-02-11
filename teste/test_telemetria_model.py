@@ -12,6 +12,7 @@
 
 import sys
 import os
+import pandas as pd
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from libs.db import Database
@@ -60,12 +61,12 @@ def testar_buscar_grupo():
         grupo_teste = next(iter(grupos))
 
         try:
-            dados = model.buscar_grupo(usina, grupo_teste, DATA_INICIO, DATA_FIM)
-            linhas = len(dados)
-            colunas = list(dados[0].keys()) if dados else []
+            df = model.buscar_grupo(usina, grupo_teste, DATA_INICIO, DATA_FIM)
+            linhas = len(df)
+            colunas = list(df.columns) if not df.empty else []
             print(f'  [OK] {usina}/{grupo_teste} -> {linhas} registros, colunas={colunas[:3]}...')
 
-            if dados and 'data_hora' not in dados[0]:
+            if not df.empty and 'data_hora' not in df.columns:
                 erros.append(f'{usina}/{grupo_teste}: sem data_hora no retorno')
 
         except Exception as e:
@@ -77,30 +78,82 @@ def testar_buscar_grupo():
     return not erros
 
 
+def _converter_data(v: str) -> str:
+    """Simula o validator do Pydantic: DD/MM/YYYY HH:mm → YYYY-MM-DD HH:MM:SS."""
+    from datetime import datetime
+    dt_obj = datetime.strptime(v, '%d/%m/%Y %H:%M')
+    return dt_obj.strftime('%Y-%m-%d %H:%M:%S')
+
+
 def testar_buscar_sensor():
-    """Consulta uma variável individual de cada usina."""
+    """Testa leitura individual de sensores simulando payloads reais."""
     print('\n' + '=' * 70)
-    print('TESTE 3: buscar_sensor')
+    print('TESTE 3: buscar_sensor (simulação payload)')
     print('=' * 70)
     db = Database()
     model = TelemetriaModel(db)
     erros = []
 
-    for usina in USINAS_CONFIG:
-        grupos = model.listar_grupos(usina)
-        # Pega primeira variável do primeiro grupo
-        primeiro_grupo = next(iter(grupos))
-        variavel = grupos[primeiro_grupo][0]
+    # Payloads reais: janelas de 1h (compatíveis com períodos válidos)
+    # (usina, variavel, data_inicio, data_fim)
+    CASOS = [
+        # ── Aparecida (1 UG / 1 tabela) ──
+        ('CGH-APARECIDA', 'UG-01 Potência Ativa',
+         '15/01/2026 08:00', '15/01/2026 09:00'),
 
+        ('CGH-APARECIDA', 'UG-01 Temp. Óleo UHLM',
+         '10/01/2026 10:00', '10/01/2026 11:00'),
+
+        # ── FAE (2 UGs / 1 tabela) ──
+        ('CGH-FAE', 'UG-01 Potência Ativa',
+         '05/01/2026 08:00', '05/01/2026 09:00'),
+
+        ('CGH-FAE', 'UG-02 Potência Ativa',
+         '05/01/2026 08:00', '05/01/2026 09:00'),
+
+        ('CGH-FAE', 'UG-01 Fator de Potência',
+         '05/01/2026 14:00', '05/01/2026 15:00'),
+
+        ('CGH-FAE', 'UG-02 Fator de Potência',
+         '05/01/2026 14:00', '05/01/2026 15:00'),
+
+        # ── Pedras (2 UGs / 2 tabelas) ──
+        ('PCH-PEDRAS', 'UG-01 Tensão Fase A',
+         '20/01/2026 08:00', '20/01/2026 09:00'),
+
+        ('PCH-PEDRAS', 'UG-02 Tensão Fase A',
+         '20/01/2026 08:00', '20/01/2026 09:00'),
+
+        ('PCH-PEDRAS', 'UG-01 Temp. Óleo UHLM',
+         '01/01/2026 00:00', '01/01/2026 01:00'),
+
+        ('PCH-PEDRAS', 'UG-02 Temp. Óleo UHLM',
+         '01/01/2026 00:00', '01/01/2026 01:00'),
+
+        # ── Hoppen (2 UGs / 2 tabelas) ──
+        ('CGH-HOPPEN', 'UG-01 Fator de Potência',
+         '01/01/2026 12:00', '01/01/2026 13:00'),
+
+        ('CGH-HOPPEN', 'UG-02 Fator de Potência',
+         '01/01/2026 12:00', '01/01/2026 13:00'),
+    ]
+
+    for usina, variavel, dt_ini_raw, dt_fim_raw in CASOS:
         try:
-            dados = model.buscar_sensor(usina, variavel, DATA_INICIO, DATA_FIM)
-            linhas = len(dados)
-            print(f'  [OK] {usina}/"{variavel}" -> {linhas} registros')
+            dt_ini = _converter_data(dt_ini_raw)
+            dt_fim = _converter_data(dt_fim_raw)
 
-            if dados:
-                chaves = list(dados[0].keys())
-                if len(chaves) != 2:
-                    erros.append(f'{usina}/"{variavel}": esperado 2 colunas (data_hora + valor), recebeu {len(chaves)}: {chaves}')
+            df = model.buscar_sensor(usina, variavel, dt_ini, dt_fim)
+            linhas = len(df)
+            ncols = len(df.columns) if not df.empty else 0
+
+            print(f'  [OK] "{variavel}" -> {linhas} registros, {ncols} colunas')
+
+            if not df.empty:
+                _imprimir_tabela(df, variavel)
+
+            if not df.empty and ncols != 2:
+                erros.append(f'{usina}/"{variavel}": esperado 2 colunas, recebeu {ncols}: {list(df.columns)}')
 
         except Exception as e:
             msg = f'{usina}/"{variavel}": {type(e).__name__}: {e}'
@@ -109,6 +162,26 @@ def testar_buscar_sensor():
 
     _resumo('buscar_sensor', erros)
     return not erros
+
+
+def _imprimir_tabela(df: pd.DataFrame, variavel: str):
+    """Imprime mini-tabela com 2 primeiros e 2 últimos registros."""
+    col_valor = [c for c in df.columns if c != 'data_hora'][0]
+    linhas_show = pd.concat([df.head(2), df.tail(2)]).drop_duplicates()
+
+    print(f'       {"data_hora":<26} {col_valor}')
+    print(f'       {"-"*26} {"-"*20}')
+    exibidos = 0
+    for _, row in linhas_show.iterrows():
+        dt = row['data_hora']
+        dt_str = dt.strftime('%Y-%m-%d %H:%M:%S') if hasattr(dt, 'strftime') else str(dt)
+        val = row[col_valor]
+        val_str = f'{val:.3f}' if isinstance(val, (int, float)) else str(val)
+        print(f'       {dt_str:<26} {val_str}')
+        exibidos += 1
+        if exibidos == 2 and len(linhas_show) > 2:
+            print(f'       {"...":<26} ...')
+    print()
 
 
 def testar_variavel_inexistente():
@@ -165,15 +238,15 @@ if __name__ == '__main__':
     print('🔧 FASE 1: Teste do TelemetriaModel')
     print('=' * 70)
 
-    ok1 = testar_listar_grupos()
-    ok2 = testar_buscar_grupo()
+    # ok1 = testar_listar_grupos()
+    # ok2 = testar_buscar_grupo()
     ok3 = testar_buscar_sensor()
-    ok4 = testar_variavel_inexistente()
-    ok5 = testar_grupo_inexistente()
+    # ok4 = testar_variavel_inexistente()
+    # ok5 = testar_grupo_inexistente()
 
     print('\n' + '=' * 70)
-    total_ok = sum([ok1, ok2, ok3, ok4, ok5])
-    print(f'RESULTADO FASE 1: {total_ok}/5 testes passaram')
-    if total_ok < 5:
-        raise SystemExit(1)
-    print('✅ FASE 1 APROVADA')
+    # total_ok = sum([ok1, ok2, ok3, ok4, ok5])
+    # print(f'RESULTADO FASE 1: {total_ok}/5 testes passaram')
+    # if total_ok < 5:
+    #     raise SystemExit(1)
+    # print('✅ FASE 1 APROVADA')

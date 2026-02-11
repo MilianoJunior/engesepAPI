@@ -5,7 +5,8 @@ Testa os 3 endpoints reais: /producao-acumulada (POST), /usinas (GET), /health (
 import requests
 import json
 
-BASE_URL = "http://localhost:8000"
+#BASE_URL = "http://localhost:8000"
+BASE_URL = "https://engesepapi-production.up.railway.app"
 TOKEN_VALIDO = "123456"
 TOKENS_INVALIDOS = ["engesep", "admin", "token", "test"]
 
