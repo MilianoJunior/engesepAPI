@@ -104,14 +104,16 @@ pip install -r requirements.txt
 Crie um arquivo `.env` na raiz:
 
 ```env
-MYSQLHOST=localhost
-MYSQLUSER=root
-MYSQLPASSWORD=sua_senha
-MYSQLDATABASE=nome_do_banco
-MYSQLPORT=3306
+MYSQL_HOST=localhost
+MYSQL_USER=root
+MYSQL_ROOT_PASSWORD=sua_senha
+MYSQL_DATABASE=nome_do_banco
+MYSQL_PORT=3306
 API_TOKEN=seu_token_seguro
 
 ```
+
+Observação: o código também aceita aliases legados (`MYSQLHOST`, `MYSQLUSER`, `MYSQLPASSWORD`, `MYSQLDATABASE`, `MYSQLPORT`) e `MYSQL_URL`.
 
 ### 3. Execução
 
