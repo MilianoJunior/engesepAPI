@@ -17,15 +17,16 @@ from libs.utils import desempenho
 
 load_dotenv()
 
+
 class Database:
     @desempenho
     def __init__(self):
-        self.host = os.getenv('MYSQLHOST')
-        self.user = os.getenv('MYSQLUSER')
-        self.password = os.getenv('MYSQLPASSWORD')
-        self.database = os.getenv('MYSQLDATABASE')
-        self.port = os.getenv('MYSQLPORT')
-        self.connection_timeout = int(os.getenv('MYSQLCONNECTIONTIMEOUT', 10))
+        self.host = os.getenv('MYSQL_HOST')
+        self.user = os.getenv('MYSQL_USER')
+        self.password = os.getenv('MYSQL_ROOT_PASSWORD')
+        self.database = os.getenv('MYSQL_DATABASE')
+        self.port = os.getenv('MYSQL_PORT')
+        self.connection_timeout = int(os.getenv('MYSQL_CONNECTION_TIMEOUT', 10))
         self.connection = None
 
     @desempenho 
