@@ -42,6 +42,11 @@ class UsinaModel:
         self.cache_enabled = os.getenv('USINA_CACHE_ENABLED', '1').strip().lower() in {'1', 'true', 'yes', 'on'}
         self.cache_ttl_seconds = int(os.getenv('USINA_CACHE_TTL_SECONDS', '60'))
         self.connection_idle_ttl_seconds = int(os.getenv('USINA_CONN_IDLE_TTL_SECONDS', '180'))
+        self.raw_df_debug = os.getenv('USINA_RAW_DF_DEBUG', '0').strip().lower() in {'1', 'true', 'yes', 'on'}
+        self.raw_df_debug_print_query = os.getenv('USINA_RAW_DF_DEBUG_QUERY', '0').strip().lower() in {'1', 'true', 'yes', 'on'}
+        self.raw_df_debug_rows = int(os.getenv('USINA_RAW_DF_DEBUG_ROWS', '3'))
+        meses_debug_raw = os.getenv('USINA_RAW_DF_DEBUG_MESES', '').strip()
+        self.raw_df_debug_meses = {m.strip() for m in meses_debug_raw.split(',') if m.strip()}
         self._connection_last_used_at = None
 
     def buscar_dados_usina(self, usina: str, data_inicio: str, data_fim: str, periodo: str = 'D') -> pd.DataFrame:
@@ -55,6 +60,12 @@ class UsinaModel:
         mapa_energia = cfg['energia']
         periodo = (periodo or 'D').upper()[0]
         query_periodo = self._resolver_periodo_base(periodo)
+        if self.raw_df_debug:
+            print(
+                f"[RAW-DEBUG] usina={usina} periodo_solicitado={periodo} "
+                f"periodo_query={query_periodo} "
+                f"obs={'consulta_mensal_sql_ativa' if query_periodo == 'M' else 'consulta_sql_nao_agregada'}"
+            )
         cache_key = self._cache_key_dados_usina_base(usina, data_inicio, data_fim, query_periodo)
 
         if self.cache_enabled:
@@ -63,6 +74,7 @@ class UsinaModel:
                 return cache_df.copy(deep=False)
 
         dfs = self._coletar_dataframes(
+            usina=usina,
             tabelas=cfg['tabelas'],
             mapa_colunas=mapa_energia,
             data_inicio=data_inicio,
@@ -84,6 +96,7 @@ class UsinaModel:
             return pd.DataFrame()
 
         dfs = self._coletar_dataframes(
+            usina=usina,
             tabelas=tabelas,
             mapa_colunas=mapa,
             data_inicio=data_inicio,
@@ -95,6 +108,7 @@ class UsinaModel:
 
     def _coletar_dataframes(
         self,
+        usina: str,
         tabelas: list[str],
         mapa_colunas: dict,
         data_inicio: str,
@@ -118,6 +132,7 @@ class UsinaModel:
             query = self._montar_query(tabela, colunas, data_inicio, data_fim, periodo)
             df_temp = self.db.fetch_dataframe(query)
             self._touch_connection()
+            self._log_raw_dataframe(usina, tabela, periodo, colunas, query, df_temp)
 
             if df_temp.empty:
                 continue
@@ -311,3 +326,81 @@ class UsinaModel:
             df_base = pd.merge(df_base, df_temp, on='data_hora', how='outer')
 
         return df_base.sort_values('data_hora').reset_index(drop=True)
+
+    def _log_raw_dataframe(
+        self,
+        usina: str,
+        tabela: str,
+        periodo: str,
+        colunas_sql: list[str],
+        query: str,
+        df_raw: pd.DataFrame,
+    ):
+        if not self.raw_df_debug:
+            return
+
+        print(
+            f"[RAW-DEBUG] usina={usina} tabela={tabela} periodo_query={periodo} "
+            f"rows={len(df_raw)} cols={list(df_raw.columns)} colunas_sql={colunas_sql}"
+        )
+        if self.raw_df_debug_print_query:
+            print(f"[RAW-DEBUG] query={query}")
+
+        if df_raw.empty:
+            print("[RAW-DEBUG] dataframe_vazio")
+            return
+
+        if 'data_hora' not in df_raw.columns:
+            print("[RAW-DEBUG] sem_coluna_data_hora")
+            return
+
+        df = df_raw.copy()
+        df['data_hora'] = pd.to_datetime(df['data_hora'], errors='coerce')
+        df = df[df['data_hora'].notna()].sort_values('data_hora')
+        if df.empty:
+            print("[RAW-DEBUG] sem_data_hora_valida")
+            return
+
+        colunas_numericas = [c for c in df.columns if c != 'data_hora']
+        for col in colunas_numericas:
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+
+        chave_mes = df['data_hora'].dt.to_period('M').astype(str)
+        meses = sorted(chave_mes.unique().tolist())
+        for mes in meses:
+            if self.raw_df_debug_meses and mes not in self.raw_df_debug_meses:
+                continue
+
+            df_mes = df[chave_mes == mes]
+            if df_mes.empty:
+                continue
+
+            print(f"[RAW-DEBUG][MES] mes={mes} rows={len(df_mes)}")
+            for col in colunas_numericas:
+                serie = df_mes[col]
+                serie_valid = serie.dropna()
+                first_val = float(serie_valid.iloc[0]) if not serie_valid.empty else None
+                last_val = float(serie_valid.iloc[-1]) if not serie_valid.empty else None
+                min_val = float(serie_valid.min()) if not serie_valid.empty else None
+                max_val = float(serie_valid.max()) if not serie_valid.empty else None
+                zeros = int((serie == 0).sum())
+                sentinela_103 = int((serie == 103.00).sum())
+                negativos = int((serie < 0).sum())
+                nulos = int(serie.isna().sum())
+
+                print(
+                    f"[RAW-DEBUG][MES][COL] mes={mes} coluna={col} "
+                    f"validos={int(serie_valid.shape[0])} nulos={nulos} zeros={zeros} "
+                    f"sentinela103={sentinela_103} negativos={negativos} "
+                    f"first={first_val} last={last_val} min={min_val} max={max_val}"
+                )
+
+            if self.raw_df_debug_rows > 0:
+                amostra = pd.concat(
+                    [
+                        df_mes.head(self.raw_df_debug_rows),
+                        df_mes.tail(self.raw_df_debug_rows),
+                    ]
+                ).drop_duplicates().sort_values('data_hora')
+                print("[RAW-DEBUG][MES][AMOSTRA]")
+                print(amostra.to_string(index=False))

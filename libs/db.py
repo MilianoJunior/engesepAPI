@@ -98,12 +98,6 @@ class Database:
     @desempenho 
     def connect(self):
         try:
-            print(f"host: {self.host}")
-            print(f"user: {self.user}")
-            print(f"password: {self.password}")
-            print(f"database: {self.database}")
-            print(f"port: {self.port}")
-            print(f"connection_timeout: {self.connection_timeout}")
             self.connection = mysql.connector.connect(
                 host=self.host,
                 user=self.user,
