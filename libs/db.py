@@ -1,15 +1,17 @@
 # -------------------------------------------------------------------
 # FLUXO DO MÓDULO
-# 1. __init__        → carrega configurações do .env
-# 2. connect         → abre conexão MySQL
+# 1. __init__        → carrega configurações do .env e cria pool de conexões
+# 2. connect         → compat. legada (no-op, pool gerencia conexões)
 # 3. execute_query   → executa query com commit (INSERT/UPDATE/DELETE)
 # 4. fetch_data      → executa SELECT, retorna lista de dicts
 # 5. fetch_dataframe → executa SELECT, retorna pd.DataFrame
-# 6. close           → encerra conexão
+# 6. close           → compat. legada (no-op, pool gerencia conexões)
 # -------------------------------------------------------------------
 
 import mysql.connector
 from mysql.connector import Error
+from mysql.connector.pooling import MySQLConnectionPool
+import threading
 import pandas as pd
 import os
 from urllib.parse import unquote, urlparse
@@ -76,8 +78,16 @@ class Database:
             default=10,
             env_name="MYSQL_CONNECTION_TIMEOUT",
         )
+        self.pool_size = _to_int(
+            _env_first("MYSQL_POOL_SIZE"),
+            default=5,
+            env_name="MYSQL_POOL_SIZE",
+        )
+        # Compat. legada: alguns módulos acessam db.connection diretamente
         self.connection = None
         self._validate_config()
+        self._pool = None
+        self._pool_lock = threading.Lock()
 
     def _validate_config(self):
         obrigatorias = {
@@ -95,75 +105,85 @@ class Database:
                 "(ou aliases legados, ou MYSQL_URL)."
             )
 
-    @desempenho 
+    def _criar_pool(self) -> MySQLConnectionPool:
+        return MySQLConnectionPool(
+            pool_name="engesep_pool",
+            pool_size=self.pool_size,
+            pool_reset_session=True,
+            host=self.host,
+            user=self.user,
+            password=self.password,
+            database=self.database,
+            port=self.port,
+            connection_timeout=self.connection_timeout,
+        )
+
+    def _get_conn(self):
+        """Pega uma conexão do pool. Cria o pool na primeira chamada (lazy). Sempre devolver com conn.close()."""
+        if self._pool is None:
+            with self._pool_lock:
+                if self._pool is None:  # double-checked locking
+                    self._pool = self._criar_pool()
+        return self._pool.get_connection()
+
+    # compat. legada — módulos que chamam db.connect() continuam funcionando
+    @desempenho
     def connect(self):
-        try:
-            self.connection = mysql.connector.connect(
-                host=self.host,
-                user=self.user,
-                password=self.password,
-                database=self.database,
-                port=self.port,
-                connection_timeout=self.connection_timeout
-            )
-            return self.connection
-        except Error as e:
-            print(f"Erro ao conectar ao banco de dados: {e}")
-            raise Exception(f"Erro ao conectar ao banco de dados: {e}")
-        except Exception as e:
-            print(f"Erro de configuração/conexão MySQL: {e}")
-            raise Exception(f"Erro de configuração/conexão MySQL: {e}")
+        pass
+
+    # compat. legada — módulos que chamam db.close() continuam funcionando
+    def close(self):
+        pass
 
     @desempenho
     def execute_query(self, query, params=None):
-        if self.connection is None:
-            self.connect()
-        cursor = self.connection.cursor()
+        conn = self._get_conn()
         try:
-            cursor.execute(query, params or ())
-            self.connection.commit()
-            return cursor
-        except Error as e:
-            self.connection.rollback()
-            raise Exception(f"Erro ao executar query: {e}")
+            cursor = conn.cursor()
+            try:
+                cursor.execute(query, params or ())
+                conn.commit()
+                return cursor
+            except Error as e:
+                conn.rollback()
+                raise Exception(f"Erro ao executar query: {e}")
+            finally:
+                cursor.close()
         finally:
-            cursor.close()
+            conn.close()
 
     @desempenho
     def fetch_data(self, query, params=None):
-        if self.connection is None:
-            self.connect()
-        cursor = self.connection.cursor(buffered=True)
+        conn = self._get_conn()
         try:
-            cursor.execute(query, params or ())
-            result = cursor.fetchall()
-            columns = [col[0] for col in cursor.description]
-            return [dict(zip(columns, row)) for row in result]
-        except Error as e:
-            raise Exception(f"Erro ao buscar dados: {e}")
+            cursor = conn.cursor(buffered=True)
+            try:
+                cursor.execute(query, params or ())
+                result = cursor.fetchall()
+                columns = [col[0] for col in cursor.description]
+                return [dict(zip(columns, row)) for row in result]
+            except Error as e:
+                raise Exception(f"Erro ao buscar dados: {e}")
+            finally:
+                cursor.close()
         finally:
-            cursor.close()
+            conn.close()
 
     @desempenho
     def fetch_dataframe(self, query, params=None) -> pd.DataFrame:
-        """Executa SELECT e retorna pd.DataFrame direto."""
-        if self.connection is None:
-            self.connect()
-        cursor = self.connection.cursor(buffered=True)
+        """Executa SELECT e retorna pd.DataFrame. Thread-safe via pool."""
+        conn = self._get_conn()
         try:
-            cursor.execute(query, params or ())
-            rows = cursor.fetchall()
-            columns = [col[0] for col in cursor.description]
-            return pd.DataFrame(rows, columns=columns)
-        except Error as e:
-            raise Exception(f"Erro ao buscar dados: {e}")
-        finally:
-            cursor.close()
-
-    def close(self):
-        if self.connection and self.connection.is_connected():
+            cursor = conn.cursor(buffered=True)
             try:
-                self.connection.close()
+                cursor.execute(query, params or ())
+                rows = cursor.fetchall()
+                columns = [col[0] for col in cursor.description]
+                return pd.DataFrame(rows, columns=columns)
             except Error as e:
-                pass
-        self.connection = None
+                raise Exception(f"Erro ao buscar dados: {e}")
+            finally:
+                cursor.close()
+        finally:
+            conn.close()
+
