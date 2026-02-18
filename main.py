@@ -260,8 +260,10 @@ def producao_acumulada(request: ProducaoRequest):
         return {'usina': request.usina, 'periodo': periodo, 'resultado': resultado}
 
     except Exception as e:
-        print(f"Erro: {e}")
+        import traceback
+        print(f"[ERRO] producao_acumulada usina={request.usina}: {e}\n{traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=f"Erro ao processar usina {request.usina}.")
+
 
 
 # ── Telemetria: Sensor Individual ──
