@@ -80,7 +80,7 @@ class Database:
         )
         self.pool_size = _to_int(
             _env_first("MYSQL_POOL_SIZE"),
-            default=5,
+            default=10,
             env_name="MYSQL_POOL_SIZE",
         )
         # Compat. legada: alguns módulos acessam db.connection diretamente
@@ -119,12 +119,26 @@ class Database:
         )
 
     def _get_conn(self):
-        """Pega uma conexão do pool. Cria o pool na primeira chamada (lazy). Sempre devolver com conn.close()."""
+        """Pega uma conexão do pool. Cria o pool na primeira chamada (lazy).
+        Retry com backoff quando pool estiver esgotado. Sempre devolver com conn.close()."""
         if self._pool is None:
             with self._pool_lock:
-                if self._pool is None:  # double-checked locking
+                if self._pool is None:
                     self._pool = self._criar_pool()
-        return self._pool.get_connection()
+
+        tentativas = 3
+        espera = 0.5  # segundos entre tentativas
+        for i in range(tentativas):
+            try:
+                return self._pool.get_connection()
+            except Exception as e:
+                if 'pool exhausted' in str(e).lower() and i < tentativas - 1:
+                    print(f"[POOL] esgotado, aguardando {espera}s (tentativa {i+1}/{tentativas})")
+                    import time
+                    time.sleep(espera)
+                    espera *= 2  # backoff exponencial
+                else:
+                    raise
 
     # compat. legada — módulos que chamam db.connect() continuam funcionando
     @desempenho

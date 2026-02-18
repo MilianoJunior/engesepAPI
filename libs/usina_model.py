@@ -68,24 +68,23 @@ class UsinaModel:
             )
         cache_key = self._cache_key_dados_usina_base(usina, data_inicio, data_fim, query_periodo)
 
-        if self.cache_enabled:
-            cache_df = CacheStore.get(cache_key)
-            if cache_df is not None:
-                return cache_df.copy(deep=False)
+        def _buscar():
+            dfs = self._coletar_dataframes(
+                usina=usina,
+                tabelas=cfg['tabelas'],
+                mapa_colunas=mapa_energia,
+                data_inicio=data_inicio,
+                data_fim=data_fim,
+                periodo=query_periodo,
+                preparar_energia=True,
+            )
+            return self._merge_dataframes(dfs)
 
-        dfs = self._coletar_dataframes(
-            usina=usina,
-            tabelas=cfg['tabelas'],
-            mapa_colunas=mapa_energia,
-            data_inicio=data_inicio,
-            data_fim=data_fim,
-            periodo=query_periodo,
-            preparar_energia=True,
-        )
-        resultado = self._merge_dataframes(dfs)
         if self.cache_enabled:
-            CacheStore.set(cache_key, resultado, ttl_seconds=self.cache_ttl_seconds)
-        return resultado.copy(deep=False)
+            resultado = CacheStore.get_or_set(cache_key, _buscar, ttl_seconds=self.cache_ttl_seconds)
+            return resultado.copy(deep=False) if resultado is not None else pd.DataFrame()
+
+        return _buscar()
 
     def buscar_por_grupo(self, usina: str, grupo: str, data_inicio: str, data_fim: str) -> pd.DataFrame:
         """Consulta colunas de um grupo específico (energia, temperaturas, etc.)."""

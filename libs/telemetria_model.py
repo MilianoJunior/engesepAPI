@@ -41,48 +41,43 @@ class TelemetriaModel:
             raise ValueError(f'Grupo "{grupo}" não existe para usina {usina}.')
 
         cache_key = f'telemetria_grupo:{usina}|{grupo}|{data_inicio}|{data_fim}'
-        if self.cache_enabled:
-            cached = CacheStore.get(cache_key)
-            if cached is not None:
-                return cached
 
-        tabelas = cfg['tabelas']
-        dfs = []
-
-        for tabela in tabelas:
-            colunas = mapa.get(tabela, [])
-            if not colunas:
-                continue
-            df = self._consultar(tabela, colunas, data_inicio, data_fim)
-            if not df.empty:
-                dfs.append(df)
-
-        if not dfs:
-            return pd.DataFrame()
-
-        resultado = self._merge_dataframes(dfs)
+        def _buscar_grupo():
+            tabelas = cfg['tabelas']
+            dfs = []
+            for tabela in tabelas:
+                colunas = mapa.get(tabela, [])
+                if not colunas:
+                    continue
+                df = self._consultar(tabela, colunas, data_inicio, data_fim)
+                if not df.empty:
+                    dfs.append(df)
+            if not dfs:
+                return None
+            return self._merge_dataframes(dfs)
 
         if self.cache_enabled:
-            CacheStore.set(cache_key, resultado, ttl_seconds=self.cache_ttl_seconds)
-        return resultado
+            resultado = CacheStore.get_or_set(cache_key, _buscar_grupo, ttl_seconds=self.cache_ttl_seconds)
+            return resultado if resultado is not None else pd.DataFrame()
+
+        return _buscar_grupo() or pd.DataFrame()
 
     def buscar_sensor(self, usina: str, variavel: str, data_inicio: str, data_fim: str) -> pd.DataFrame:
         """Consulta variável individual pelo alias → retorna DataFrame bruto."""
         cache_key = f'telemetria_sensor:{usina}|{variavel}|{data_inicio}|{data_fim}'
+
+        def _buscar_sensor():
+            grupo, tabela, coluna_sql = self._localizar_variavel(usina, variavel)
+            df = self._consultar(tabela, [coluna_sql], data_inicio, data_fim)
+            return df if not df.empty else None
+
         if self.cache_enabled:
-            cached = CacheStore.get(cache_key)
-            if cached is not None:
-                return cached
+            resultado = CacheStore.get_or_set(cache_key, _buscar_sensor, ttl_seconds=self.cache_ttl_seconds)
+            return resultado if resultado is not None else pd.DataFrame()
 
         grupo, tabela, coluna_sql = self._localizar_variavel(usina, variavel)
-
         df = self._consultar(tabela, [coluna_sql], data_inicio, data_fim)
-        if df.empty:
-            return pd.DataFrame()
-
-        if self.cache_enabled:
-            CacheStore.set(cache_key, df, ttl_seconds=self.cache_ttl_seconds)
-        return df
+        return df if not df.empty else pd.DataFrame()
 
     def listar_grupos(self, usina: str) -> dict:
         """Retorna dict de grupos disponíveis com suas variáveis (aliases)."""

@@ -1,24 +1,28 @@
 # -------------------------------------------------------------------
 # FLUXO DO MÓDULO
 # 1. get              → busca valor no cache (verifica TTL, purga expirados)
-# 2. set              → armazena valor com TTL e controle de memória
-# 3. clear            → limpa todo o cache
-# 4. delete_by_prefix → remove chaves por prefixo
+# 2. get_or_set       → anti-stampede: só uma thread calcula, outras aguardam
+# 3. set              → armazena valor com TTL e controle de memória
+# 4. clear            → limpa todo o cache
+# 5. delete_by_prefix → remove chaves por prefixo
 # -------------------------------------------------------------------
 
 import os
 import time
 import threading
-from typing import Any
+from typing import Any, Callable
 
 
 class CacheStore:
-    """Armazém global de cache com expiração simples (TTL). Thread-safe via RLock."""
+    """Armazém global de cache com expiração simples (TTL). Thread-safe via RLock.
+    Suporta anti-stampede via get_or_set com lock por chave."""
     _data: dict = {}
     _expiry: dict = {}
     _bytes: dict = {}
     _created_at: dict = {}
     _lock = threading.RLock()
+    _key_locks: dict = {}          # lock por chave para anti-stampede
+    _key_locks_lock = threading.Lock()  # protege o dict de locks
 
     @classmethod
     def _memory_log_enabled(cls) -> bool:
@@ -81,6 +85,14 @@ class CacheStore:
             total = sum(cls._bytes.values())
 
     @classmethod
+    def _get_key_lock(cls, key: str) -> threading.Lock:
+        """Retorna (ou cria) um Lock dedicado para a chave — usado no anti-stampede."""
+        with cls._key_locks_lock:
+            if key not in cls._key_locks:
+                cls._key_locks[key] = threading.Lock()
+            return cls._key_locks[key]
+
+    @classmethod
     def get(cls, key: str):
         with cls._lock:
             cls._purge_expired()
@@ -94,6 +106,33 @@ class CacheStore:
             print(f"[CACHE] EXPIRED key={key!r}")
             cls._delete_key(key)
             return None
+
+    @classmethod
+    def get_or_set(cls, key: str, fn: Callable, ttl_seconds: int = 60) -> Any:
+        """Anti-stampede: se a chave não está no cache, apenas UMA thread chama fn().
+        As demais aguardam e pegam o resultado do cache quando estiver pronto.
+        fn deve ser callable sem argumentos: lambda: buscar_dados(...)
+        """
+        # Tentativa rápida sem lock de chave
+        valor = cls.get(key)
+        if valor is not None:
+            return valor
+
+        # Adquire lock exclusivo por chave
+        key_lock = cls._get_key_lock(key)
+        with key_lock:
+            # Double-check: outra thread pode ter populado enquanto esperávamos
+            valor = cls.get(key)
+            if valor is not None:
+                print(f"[CACHE] HIT_AFTER_WAIT key={key!r}")
+                return valor
+
+            # Somos a thread responsável por calcular
+            print(f"[CACHE] COMPUTING key={key!r}")
+            resultado = fn()
+            if resultado is not None:
+                cls.set(key, resultado, ttl_seconds=ttl_seconds)
+            return resultado
 
     @classmethod
     def set(cls, key: str, value: Any, ttl_seconds: int = 60):
