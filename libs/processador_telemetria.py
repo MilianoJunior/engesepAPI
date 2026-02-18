@@ -14,8 +14,8 @@ import pandas as pd
 # Resolução automática baseada no intervalo solicitado
 RESOLUCAO_AUTO = [
     (1,    '1min'),   # ≤ 1h  → raw
-    (24,   '15min'),  # ≤ 1d  → 15min
-    (None, '30min'),  # > 1d  → 30min
+    (23,   '15min'),  # ≤ 23h → 15min
+    (None, '30min'),  # > 23h → 30min (inclui 1 dia ou mais)
 ]
 
 IQR_FATOR = 1.5

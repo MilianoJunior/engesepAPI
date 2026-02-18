@@ -262,7 +262,7 @@ Consulta **todas as variáveis de um grupo** de uma vez.
 }
 ```
 
-**Response:** (intervalo = 1 dia → resolução 15 min)
+**Response:** (intervalo = 1 dia → resolução 30 min)
 
 ```json
 {
