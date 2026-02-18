@@ -60,8 +60,7 @@
     "hidraulica": {
       "cgh_aparecida": [
         "nivel_montante as 'Nível Montante'",
-        "nivel_jusante as 'Nível Jusante'",
-        "turbina_vazao as 'UG-01 Vazão Turbina'"
+        "nivel_jusante as 'Nível Jusante'"
       ]
     },
     "pressoes": {
@@ -165,9 +164,7 @@
       "cgh_fae": [
         "ug01_nivel_agua as 'Nível Montante'",
         "ug01_nivel_jusante as 'UG-01 Nível Jusante'",
-        "ug01_df_grade as 'UG-01 Diferencial Grade'",
-        "ug02_nivel_jusante as 'UG-02 Nível Jusante'",
-        "ug02_df_grade as 'UG-02 Diferencial Grade'"
+        "ug02_nivel_jusante as 'UG-02 Nível Jusante'"
       ]
     },
     "pressoes": {
