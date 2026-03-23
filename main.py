@@ -209,12 +209,12 @@ usina_model = UsinaModel(db)
 telemetria_model = TelemetriaModel(db)
 calculos = Calculos()
 
-TOKEN = os.getenv('API_TOKEN', '123456')
+TOKEN = os.getenv('API_TOKEN', '12345678')
 
 
 def _validar_token(token: str | None):
-    if token and token != TOKEN:
-        raise HTTPException(status_code=401, detail="Token inválido")
+    if not token == TOKEN:
+        raise HTTPException(status_code=401, detail="Token inválido ou ausente")
 
 
 # ── Produção de Energia ──
@@ -352,7 +352,6 @@ def tabela_usina(request: TabelaRequest):
     except Exception as e:
         print(f"Erro tabela: {e}")
         raise HTTPException(status_code=500, detail=f"Erro ao consultar tabelas de {request.usina}.")
-
 
 # ── Listagem ──
 

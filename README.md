@@ -248,14 +248,14 @@ Consulta o histórico de **uma única variável**.
 
 Consulta **todas as variáveis de um grupo** de uma vez.
 
-#### Exemplo: 1 UG — Grupo `potencia` (CGH-APARECIDA)
+#### Exemplo: 1 UG — Grupo `temperaturas` (CGH-APARECIDA)
 
 **Request:**
 
 ```json
 {
   "usina": "CGH-APARECIDA",
-  "grupo": "potencia",
+  "grupo": "temperaturas",
   "data_inicio": "15/01/2026 00:00",
   "data_fim": "16/01/2026 00:00",
   "token": "seu_token"
@@ -267,24 +267,18 @@ Consulta **todas as variáveis de um grupo** de uma vez.
 ```json
 {
   "usina": "CGH-APARECIDA",
-  "grupo": "potencia",
+  "grupo": "temperaturas",
   "registros": 96,
   "dados": [
     {
       "data_hora": "2026-01-15T00:00:00",
-      "UG-01 Potência Ativa": 120.5,
-      "UG-01 Potência Reativa": 18.3,
-      "UG-01 Potência Aparente": 121.9,
-      "UG-01 Fator de Potência": 0.989
-    },
-    {
-      "data_hora": "2026-01-15T00:15:00",
-      "UG-01 Potência Ativa": 118.2,
-      "UG-01 Potência Reativa": 17.9,
-      "UG-01 Potência Aparente": 119.6,
-      "UG-01 Fator de Potência": 0.988
-    },
-    "..."
+      "UG-01 Temp. Óleo UHLM": 120.5,
+      "UG-01 Temp. Óleo UHRV": 18.3,
+      "UG-01 Temp. Mancal Casquilho Combinado": 121.9,
+      "UG-01 Temp. Enrolamento Fase A": 0.989
+      "..."
+    }
+
   ]
 }
 ```
