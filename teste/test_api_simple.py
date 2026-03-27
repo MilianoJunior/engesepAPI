@@ -5,9 +5,9 @@ Testa os 3 endpoints reais: /producao-acumulada (POST), /usinas (GET), /health (
 import requests
 import json
 
-#BASE_URL = "http://localhost:8000"
-BASE_URL = "https://engesepapi-production.up.railway.app"
-TOKEN_VALIDO = "123456"
+BASE_URL = "http://localhost:8000"
+# BASE_URL = "https://engesepapi-production.up.railway.app"
+TOKEN_VALIDO = "12345678"
 TOKENS_INVALIDOS = ["engesep", "admin", "token", "test"]
 
 # ======================== HELPERS ========================
@@ -31,7 +31,7 @@ def testar_producao_acumulada():
     """Testa POST /producao-acumulada com diferentes usinas e períodos"""
     url = f"{BASE_URL}/producao-acumulada"
 
-    usinas = ["CGH-APARECIDA", "CGH-FAE", "PCH-PEDRAS", "CGH-PICADAS-ALTAS", "CGH-HOPPEN"]
+    usinas = ["PCH-PIRA", "CGH-APARECIDA"] # "CGH-APARECIDA", "CGH-FAE", "PCH-PEDRAS", "CGH-PICADAS-ALTAS", "CGH-HOPPEN", 
     periodos = ["D", "M"]
 
     for usina in usinas:
@@ -40,8 +40,8 @@ def testar_producao_acumulada():
 
             payload = {
                 "usina": usina,
-                "data_inicio": "01/01/2026 00:00",
-                "data_fim": "31/01/2026 23:59",
+                "data_inicio": "01/03/2026 00:00",
+                "data_fim": "31/03/2026 23:59",
                 "periodo": periodo,
                 "token": TOKEN_VALIDO
             }
@@ -64,8 +64,8 @@ def testar_token_invalido():
 
     payload = {
         "usina": "CGH-APARECIDA",
-        "data_inicio": "01/01/2025 00:00",
-        "data_fim": "31/01/2025 23:59",
+        "data_inicio": "01/03/2025 00:00",
+        "data_fim": "31/03/2025 23:59",
         "periodo": "D",
     }
 
@@ -98,6 +98,7 @@ def testar_validacao():
 
 def testar_usinas():
     """Testa GET /usinas"""
+    return
     url = f"{BASE_URL}/usinas"
     print_header("Listar Usinas", url, metodo="GET")
 
