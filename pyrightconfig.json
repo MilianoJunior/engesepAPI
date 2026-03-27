@@ -1,0 +1,7 @@
+{
+    "venvPath": "/home/jrmfilho23/projetos",
+    "venv": "amb",
+    "pythonVersion": "3.12",
+    "reportMissingImports": true,
+    "reportMissingTypeStubs": false
+}

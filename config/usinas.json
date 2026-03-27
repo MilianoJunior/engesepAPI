@@ -93,6 +93,33 @@
       ]
     }
   },
+  "PCH-PIRA":{
+    "descricao": "PCH Pira - 5 UGs",
+    "tabelas": [
+      "geracaoAcumulada"
+    ],
+    "identificacao":{
+      "geracaoAcumulada":[
+      "Time_Stamp as data_hora",
+      "Time_Stamp_ms"
+        ]
+    },
+    "status":{},
+    "energia":{
+      "geracaoAcumulada":[
+      "geracaoug01 as 'UG-01 Energia Acumulada'",
+      "geracaoug02 as 'UG-02 Energia Acumulada'",
+      "geracaoug03 as 'UG-03 Energia Acumulada'",
+      "geracaoug04 as 'UG-04 Energia Acumulada'",
+      "geracaomc01 as 'UG-05 Energia Acumulada'"
+        ]
+    },
+    "hidraulica": {
+      "mc01Analogicas": [
+        "NVMontante as 'Nível Montante'"
+      ]
+    }
+  },
   "CGH-FAE": {
     "descricao": "CGH FAE - 2 UGs",
     "tabelas": [

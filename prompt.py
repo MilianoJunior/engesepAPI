@@ -142,3 +142,681 @@ print('-' * 50)
 # estrutura_pastas_arquivos(path, "", imprimir=True)
 # print('-' * 50)
 # print('Métodos e funções dos arquivos Python:')
+
+
+'''
+
+Tenho o seguinte desafio, mapear as tabelas da PCH-PIRA para o seguinte formato de dict:
+
+{
+  "CGH-APARECIDA": {
+    "descricao": "CGH Aparecida - 1 UG",
+    "tabelas": [
+      "cgh_aparecida"
+    ],
+    "identificacao": {
+      "cgh_aparecida": [
+        "id",
+        "data_hora"
+      ]
+    },
+    "status": {
+      "cgh_aparecida": [
+        "status as 'UG-01 Status'"
+      ]
+    },
+    "energia": {
+      "cgh_aparecida": [
+        "acumulador_energia as 'UG-01 Energia Acumulada'"
+      ]
+    },
+    "eletrica": {
+      "cgh_aparecida": [
+        "tensao_fase_A as 'UG-01 Tensão Fase A'",
+        "tensao_fase_B as 'UG-01 Tensão Fase B'",
+        "tensao_fase_C as 'UG-01 Tensão Fase C'",
+        "tensao_neutro as 'UG-01 Tensão Neutro'",
+        "corrente_fase_A as 'UG-01 Corrente Fase A'",
+        "corrente_fase_B as 'UG-01 Corrente Fase B'",
+        "corrente_fase_C as 'UG-01 Corrente Fase C'",
+        "corrente_neutro as 'UG-01 Corrente Neutro'",
+        "tensao_excitacao as 'UG-01 Tensão Excitação'",
+        "corrente_excitacao as 'UG-01 Corrente Excitação'",
+        "frequencia as 'UG-01 Frequência'",
+        "tensaoL_fase_AB as 'UG-01 Tensão Linha AB'",
+        "tensaoL_fase_BC as 'UG-01 Tensão Linha BC'",
+        "tensaoL_fase_CA as 'UG-01 Tensão Linha CA'",
+        "correnteL_fase_A as 'UG-01 Corrente Linha A'",
+        "correnteL_fase_B as 'UG-01 Corrente Linha B'",
+        "correnteL_fase_C as 'UG-01 Corrente Linha C'"
+      ]
+    },
+    "potencia": {
+      "cgh_aparecida": [
+        "potencia_ativa as 'UG-01 Potência Ativa'",
+        "potencia_reativa as 'UG-01 Potência Reativa'",
+        "potencia_aparente as 'UG-01 Potência Aparente'",
+        "fp as 'UG-01 Fator de Potência'"
+      ]
+    },
+    "mecanica": {
+      "cgh_aparecida": [
+        "distribuidor as 'UG-01 Distribuidor'",
+        "velocidade as 'UG-01 Velocidade'",
+        "posicao_rotor as 'UG-01 Posição Rotor'",
+        "horimetro_eletrico as 'UG-01 Horímetro'"
+      ]
+    },
+    "hidraulica": {
+      "cgh_aparecida": [
+        "nivel_montante as 'Nível Montante'",
+        "nivel_jusante as 'Nível Jusante'"
+      ]
+    },
+    "pressoes": {
+      "cgh_aparecida": [
+        "uhlm_pressao as 'UG-01 Pressão Óleo UHLM'",
+        "uhrv_pressao as 'UG-01 Pressão Óleo UHRV'"
+      ]
+    },
+    "temperaturas": {
+      "cgh_aparecida": [
+        "temp_uhlm_oleo as 'UG-01 Temp. Óleo UHLM'",
+        "temp_uhrv_oleo as 'UG-01 Temp. Óleo UHRV'",
+        "temp_manc_casq_comb as 'UG-01 Temp. Mancal Casquilho Combinado'",
+        "temp_manc_casq_esc as 'UG-01 Temp. Mancal Casquilho Escora'",
+        "temp_enrol_A as 'UG-01 Temp. Enrolamento Fase A'",
+        "temp_enrol_B as 'UG-01 Temp. Enrolamento Fase B'",
+        "temp_enrol_C as 'UG-01 Temp. Enrolamento Fase C'",
+        "temp_nucleo_estator_01 as 'UG-01 Temp. Núcleo Estator 01'",
+        "temp_nucleo_estator_02 as 'UG-01 Temp. Núcleo Estator 02'",
+        "temp_nucleo_estator_03 as 'UG-01 Temp. Núcleo Estator 03'",
+        "temp_transf_excitacao as 'UG-01 Temp. Transf. Excitação'",
+        "temp_casq_rad_comb as 'UG-01 Temp. Casquilho Radial Comb.'",
+        "temp_mancal_casq_guia as 'UG-01 Temp. Mancal Casquilho Guia'",
+        "temp_mancal_cont_esc as 'UG-01 Temp. Mancal Contra-Escora'",
+        "temp_crowbar_01 as 'UG-01 Temp. Crowbar 01'",
+        "temp_crowbar_02 as 'UG-01 Temp. Crowbar 02'",
+        "temp_tiristor_01 as 'UG-01 Temp. Tiristor 01'",
+        "temp_tiristor_02 as 'UG-01 Temp. Tiristor 02'",
+        "temp_tiristor_03 as 'UG-01 Temp. Tiristor 03'"
+      ]
+    }
+  },
+  "CGH-FAE": {
+    "descricao": "CGH FAE - 2 UGs",
+    "tabelas": [
+      "cgh_fae"
+    ],
+    "identificacao": {
+      "cgh_fae": [
+        "id",
+        "data_hora"
+      ]
+    },
+    "status": {
+      "cgh_fae": [
+        "ug01_status as 'UG-01 Status'",
+        "ug02_status as 'UG-02 Status'"
+      ]
+    },
+    "energia": {
+      "cgh_fae": [
+        "ug01_acumulador_energia as 'UG-01 Energia Acumulada'",
+        "ug02_acumulador_energia as 'UG-02 Energia Acumulada'"
+      ]
+    },
+    "eletrica": {
+      "cgh_fae": [
+        "ug01_v_faseAB as 'UG-01 Tensão Fase A'",
+        "ug01_v_faseBC as 'UG-01 Tensão Fase B'",
+        "ug01_v_faseCA as 'UG-01 Tensão Fase C'",
+        "ug01_a_faseA as 'UG-01 Corrente Fase A'",
+        "ug01_a_faseB as 'UG-01 Corrente Fase B'",
+        "ug01_a_faseC as 'UG-01 Corrente Fase C'",
+        "UG01_exc_v as 'UG-01 Tensão Excitação'",
+        "ug01_exc_a as 'UG-01 Corrente Excitação'",
+        "ug01_frequencia as 'UG-01 Frequência'",
+        "ug02_v_faseAB as 'UG-02 Tensão Fase A'",
+        "ug02_v_faseBC as 'UG-02 Tensão Fase B'",
+        "ug02_v_faseCA as 'UG-02 Tensão Fase C'",
+        "ug02_a_faseA as 'UG-02 Corrente Fase A'",
+        "ug02_a_faseB as 'UG-02 Corrente Fase B'",
+        "ug02_a_faseC as 'UG-02 Corrente Fase C'",
+        "UG02_exc_v as 'UG-02 Tensão Excitação'",
+        "ug02_exc_a as 'UG-02 Corrente Excitação'",
+        "ug02_frequencia as 'UG-02 Frequência'"
+      ]
+    },
+    "potencia": {
+      "cgh_fae": [
+        "ug01_pot_ativa as 'UG-01 Potência Ativa'",
+        "ug01_pot_reativa as 'UG-01 Potência Reativa'",
+        "ug01_pot_aparente as 'UG-01 Potência Aparente'",
+        "ug01_fp as 'UG-01 Fator de Potência'",
+        "ug02_pot_ativa as 'UG-02 Potência Ativa'",
+        "ug02_pot_reativa as 'UG-02 Potência Reativa'",
+        "ug02_pot_aparente as 'UG-02 Potência Aparente'",
+        "ug02_fp as 'UG-02 Fator de Potência'"
+      ]
+    },
+    "mecanica": {
+      "cgh_fae": [
+        "ug01_distribuidor as 'UG-01 Distribuidor'",
+        "ug01_velocidade as 'UG-01 Velocidade'",
+        "ug01_horimetro as 'UG-01 Horímetro'",
+        "ug02_distribuidor as 'UG-02 Distribuidor'",
+        "ug02_velocidade as 'UG-02 Velocidade'",
+        "ug02_horimetro as 'UG-02 Horímetro'"
+      ]
+    },
+    "hidraulica": {
+      "cgh_fae": [
+        "ug01_nivel_agua as 'Nível Montante'",
+        "ug01_nivel_jusante as 'UG-01 Nível Jusante'",
+        "ug02_nivel_jusante as 'UG-02 Nível Jusante'"
+      ]
+    },
+    "pressoes": {
+      "cgh_fae": [
+        "ug01_pres_oleo_UHRV as 'UG-01 Pressão Óleo UHRV'",
+        "ug02_pres_oleo_UHRV as 'UG-02 Pressão Óleo UHRV'"
+      ]
+    },
+    "temperaturas": {
+      "cgh_fae": [
+        "ug01_temp_oleo_UHLM as 'UG-01 Temp. Óleo UHLM'",
+        "ug01_temp_oleo_UHRV as 'UG-01 Temp. Óleo UHRV'",
+        "ug01_enrol_faseA as 'UG-01 Temp. Enrolamento Fase A'",
+        "ug01_enrol_faseB as 'UG-01 Temp. Enrolamento Fase B'",
+        "ug01_enrol_faseC as 'UG-01 Temp. Enrolamento Fase C'",
+        "ug01_nucleo_estator as 'UG-01 Temp. Núcleo Estator'",
+        "ug01_cssu1 as 'UG-01 Temp. CS-U1'",
+        "ug01_mancal_guia as 'UG-01 Temp. Mancal Guia'",
+        "ug01_mancal_combinado as 'UG-01 Temp. Mancal Combinado'",
+        "ug01_mancal_escora as 'UG-01 Temp. Mancal Escora'",
+        "ug01_engeEX as 'UG-01 Temp. EngeEX'",
+        "ug02_temp_oleo_UHLM as 'UG-02 Temp. Óleo UHLM'",
+        "ug02_temp_oleo_UHRV as 'UG-02 Temp. Óleo UHRV'",
+        "ug02_enrol_faseA as 'UG-02 Temp. Enrolamento Fase A'",
+        "ug02_enrol_faseB as 'UG-02 Temp. Enrolamento Fase B'",
+        "ug02_enrol_faseC as 'UG-02 Temp. Enrolamento Fase C'",
+        "ug02_nucleo_estator as 'UG-02 Temp. Núcleo Estator'",
+        "ug02_cssu1 as 'UG-02 Temp. CS-U1'",
+        "ug02_mancal_guia as 'UG-02 Temp. Mancal Guia'",
+        "ug02_mancal_combinado as 'UG-02 Temp. Mancal Combinado'",
+        "ug02_mancal_escora as 'UG-02 Temp. Mancal Escora'",
+        "ug02_engeEX as 'UG-02 Temp. EngeEX'"
+      ]
+    },
+    "vibracao": {
+      "cgh_fae": [
+        "ug01_vib01 as 'UG-01 Vibração Mancal guia x'",
+        "ug01_vib02 as 'UG-01 Vibração Mancal guia y'",
+        "ug01_vib03 as 'UG-01 Vibração Mancal combinado x'",
+        "ug01_vib04 as 'UG-01 Vibração Mancal combinado y'",
+        "ug01_vib05 as 'UG-01 Vibração Mancal combinado z'",
+        "ug02_vib01 as 'UG-02 Vibração Mancal guia x'",
+        "ug02_vib02 as 'UG-02 Vibração Mancal guia y'",
+        "ug02_vib03 as 'UG-02 Vibração Mancal combinado x'",
+        "ug02_vib04 as 'UG-02 Vibração Mancal combinado y'",
+        "ug02_vib05 as 'UG-02 Vibração Mancal combinado z'"
+      ]
+    }
+  },
+  "PCH-PEDRAS": {
+    "descricao": "PCH Pedras - 2 UGs",
+    "tabelas": [
+      "pch_pedras_ug01",
+      "pch_pedras_ug02"
+    ],
+    "identificacao": {
+      "pch_pedras_ug01": [
+        "id",
+        "data_hora"
+      ],
+      "pch_pedras_ug02": [
+        "id",
+        "data_hora"
+      ]
+    },
+    "status": {
+      "pch_pedras_ug01": [
+        "status_turb as 'UG-01 Status'"
+      ],
+      "pch_pedras_ug02": [
+        "status_turb as 'UG-02 Status'"
+      ]
+    },
+    "energia": {
+      "pch_pedras_ug01": [
+        "acum_energia as 'UG-01 Energia Acumulada'"
+      ],
+      "pch_pedras_ug02": [
+        "acum_energia as 'UG-02 Energia Acumulada'"
+      ]
+    },
+    "eletrica": {
+      "pch_pedras_ug01": [
+        "tens_fase_a as 'UG-01 Tensão Fase A'",
+        "tens_fase_b as 'UG-01 Tensão Fase B'",
+        "tens_fase_c as 'UG-01 Tensão Fase C'",
+        "corr_fase_a as 'UG-01 Corrente Fase A'",
+        "corr_fase_b as 'UG-01 Corrente Fase B'",
+        "corr_fase_c as 'UG-01 Corrente Fase C'",
+        "excit_tens as 'UG-01 Tensão Excitação'",
+        "excit_corr as 'UG-01 Corrente Excitação'",
+        "freq as 'UG-01 Frequência'"
+      ],
+      "pch_pedras_ug02": [
+        "tens_fase_a as 'UG-02 Tensão Fase A'",
+        "tens_fase_b as 'UG-02 Tensão Fase B'",
+        "tens_fase_c as 'UG-02 Tensão Fase C'",
+        "corr_fase_a as 'UG-02 Corrente Fase A'",
+        "corr_fase_b as 'UG-02 Corrente Fase B'",
+        "corr_fase_c as 'UG-02 Corrente Fase C'",
+        "excit_tens as 'UG-02 Tensão Excitação'",
+        "excit_corr as 'UG-02 Corrente Excitação'",
+        "freq as 'UG-02 Frequência'"
+      ]
+    },
+    "potencia": {
+      "pch_pedras_ug01": [
+        "pot_ativa as 'UG-01 Potência Ativa'",
+        "pot_reativa as 'UG-01 Potência Reativa'",
+        "pot_aparente as 'UG-01 Potência Aparente'",
+        "fp as 'UG-01 Fator de Potência'"
+      ],
+      "pch_pedras_ug02": [
+        "pot_ativa as 'UG-02 Potência Ativa'",
+        "pot_reativa as 'UG-02 Potência Reativa'",
+        "pot_aparente as 'UG-02 Potência Aparente'",
+        "fp as 'UG-02 Fator de Potência'"
+      ]
+    },
+    "mecanica": {
+      "pch_pedras_ug01": [
+        "distrib as 'UG-01 Distribuidor'",
+        "rotor as 'UG-01 Rotor'",
+        "vel as 'UG-01 Velocidade'",
+        "horimetro as 'UG-01 Horímetro'"
+      ],
+      "pch_pedras_ug02": [
+        "distrib as 'UG-02 Distribuidor'",
+        "rotor as 'UG-02 Rotor'",
+        "vel as 'UG-02 Velocidade'",
+        "horimetro as 'UG-02 Horímetro'"
+      ]
+    },
+    "hidraulica": {
+      "pch_pedras_ug01": [
+        "niv_mont_grade as 'UG-01 Nível Montante Grade'",
+        "niv_jus_grade as 'UG-01 Nível Jusante Grade'"
+      ],
+      "pch_pedras_ug02": [
+        "niv_mont_grade as 'UG-02 Nível Montante Grade'",
+        "niv_jus_grade as 'UG-02 Nível Jusante Grade'"
+      ]
+    },
+    "pressoes": {
+      "pch_pedras_ug01": [
+        "uhrv_pres_oleo as 'UG-01 Pressão Óleo UHRV'"
+      ],
+      "pch_pedras_ug02": [
+        "uhrv_pres_oleo as 'UG-02 Pressão Óleo UHRV'"
+      ]
+    },
+    "temperaturas": {
+      "pch_pedras_ug01": [
+        "uhlm_temp_oleo as 'UG-01 Temp. Óleo UHLM'",
+        "uhrv_temp_oleo as 'UG-01 Temp. Óleo UHRV'",
+        "enrol_fase_a as 'UG-01 Temp. Enrolamento Fase A'",
+        "enrol_fase_b as 'UG-01 Temp. Enrolamento Fase B'",
+        "enrol_fase_c as 'UG-01 Temp. Enrolamento Fase C'",
+        "manc_la_guia as 'UG-01 Temp. Mancal Guia LA'",
+        "manc_lna_guia as 'UG-01 Temp. Mancal Guia LNA'",
+        "manc_lna_esc as 'UG-01 Temp. Mancal Escora LNA'"
+      ],
+      "pch_pedras_ug02": [
+        "uhlm_temp_oleo as 'UG-02 Temp. Óleo UHLM'",
+        "uhrv_temp_oleo as 'UG-02 Temp. Óleo UHRV'",
+        "enrol_fase_a as 'UG-02 Temp. Enrolamento Fase A'",
+        "enrol_fase_b as 'UG-02 Temp. Enrolamento Fase B'",
+        "enrol_fase_c as 'UG-02 Temp. Enrolamento Fase C'",
+        "manc_la_guia as 'UG-02 Temp. Mancal Guia LA'",
+        "manc_lna_guia as 'UG-02 Temp. Mancal Guia LNA'",
+        "manc_lna_esc as 'UG-02 Temp. Mancal Escora LNA'"
+      ]
+    },
+    "vibracao": {
+      "pch_pedras_ug01": [
+        "vib_la_eixo_x as 'UG-01 Vibração Eixo LA X'",
+        "vib_la_eixo_y as 'UG-01 Vibração Eixo LA Y'",
+        "vib_lna_eixo_x as 'UG-01 Vibração Eixo LNA X'",
+        "vib_lna_eixo_y as 'UG-01 Vibração Eixo LNA Y'",
+        "vib_turb_manc_rad as 'UG-01 Vibração Turbina Mancal Radial'",
+        "vib_turb_manc_guia as 'UG-01 Vibração Turbina Mancal Guia'"
+      ],
+      "pch_pedras_ug02": [
+        "vib_la_eixo_x as 'UG-02 Vibração Eixo LA X'",
+        "vib_la_eixo_y as 'UG-02 Vibração Eixo LA Y'",
+        "vib_lna_eixo_x as 'UG-02 Vibração Eixo LNA X'",
+        "vib_lna_eixo_y as 'UG-02 Vibração Eixo LNA Y'",
+        "vib_turb_manc_rad as 'UG-02 Vibração Turbina Mancal Radial'",
+        "vib_turb_manc_guia as 'UG-02 Vibração Turbina Mancal Guia'"
+      ]
+    },
+    "diversos": {
+      "pch_pedras_ug01": [
+        "fluxo_01 as 'UG-01 Fluxo 01'",
+        "fluxo_02 as 'UG-01 Fluxo 02'",
+        "fluxo_03 as 'UG-01 Fluxo 03'",
+        "niv_oleo_cuba as 'UG-01 Nível Óleo Cuba'",
+        "niv_agua_cuba as 'UG-01 Nível Água Cuba'",
+        "bucha_rad_01 as 'UG-01 Bucha Radial 01'",
+        "bucha_rad_02 as 'UG-01 Bucha Radial 02'",
+        "fluxo_agua_eixo as 'UG-01 Fluxo Água Eixo'",
+        "gaxet_01 as 'UG-01 Gaxeta 01'",
+        "gaxet_02 as 'UG-01 Gaxeta 02'",
+        "gaxet_03 as 'UG-01 Gaxeta 03'",
+        "ret_oleo as 'UG-01 Retorno Óleo'"
+      ],
+      "pch_pedras_ug02": [
+        "fluxo_01 as 'UG-02 Fluxo 01'",
+        "fluxo_02 as 'UG-02 Fluxo 02'",
+        "fluxo_03 as 'UG-02 Fluxo 03'",
+        "niv_oleo_cuba as 'UG-02 Nível Óleo Cuba'",
+        "niv_agua_cuba as 'UG-02 Nível Água Cuba'",
+        "bucha_rad_01 as 'UG-02 Bucha Radial 01'",
+        "bucha_rad_02 as 'UG-02 Bucha Radial 02'",
+        "fluxo_agua_eixo as 'UG-02 Fluxo Água Eixo'",
+        "gaxet_01 as 'UG-02 Gaxeta 01'",
+        "gaxet_02 as 'UG-02 Gaxeta 02'",
+        "gaxet_03 as 'UG-02 Gaxeta 03'",
+        "ret_oleo as 'UG-02 Retorno Óleo'"
+      ]
+    }
+  },
+  "CGH-PICADAS-ALTAS": {
+    "descricao": "CGH Picadas Altas - 2 UGs",
+    "tabelas": [
+      "cgh_picadas_altas"
+    ],
+    "identificacao": {
+      "cgh_picadas_altas": [
+        "id",
+        "data_hora"
+      ]
+    },
+    "status": {
+      "cgh_picadas_altas": [
+        "ug01_status as 'UG-01 Status'",
+        "ug02_status as 'UG-02 Status'"
+      ]
+    },
+    "energia": {
+      "cgh_picadas_altas": [
+        "ug01_acumulador_energia as 'UG-01 Energia Acumulada'",
+        "ug02_acumulador_energia as 'UG-02 Energia Acumulada'"
+      ]
+    },
+    "eletrica": {
+      "cgh_picadas_altas": [
+        "ug01_v_fase_ab as 'UG-01 Tensão Fase A'",
+        "ug01_v_fase_bc as 'UG-01 Tensão Fase B'",
+        "ug01_v_fase_ca as 'UG-01 Tensão Fase C'",
+        "ug01_a_fase_ab as 'UG-01 Corrente Fase A'",
+        "ug01_a_fase_bc as 'UG-01 Corrente Fase B'",
+        "ug01_a_fase_ca as 'UG-01 Corrente Fase C'",
+        "ug01_v_excitacao as 'UG-01 Tensão Excitação'",
+        "ug01_a_excitacao as 'UG-01 Corrente Excitação'",
+        "ug01_fhz as 'UG-01 Frequência'",
+        "ug02_v_fase_ab as 'UG-02 Tensão Fase A'",
+        "ug02_v_fase_bc as 'UG-02 Tensão Fase B'",
+        "ug02_v_fase_ca as 'UG-02 Tensão Fase C'",
+        "ug02_a_fase_bc as 'UG-02 Corrente Fase A'",
+        "ug02_a_fase_ca as 'UG-02 Corrente Fase B'",
+        "ug03_a_fase_ab as 'UG-02 Corrente Fase C'",
+        "ug02_v_excitacao as 'UG-02 Tensão Excitação'",
+        "ug02_a_excitacao as 'UG-02 Corrente Excitação'",
+        "ug02_fhz as 'UG-02 Frequência'"
+      ]
+    },
+    "potencia": {
+      "cgh_picadas_altas": [
+        "ug01_p_ativa as 'UG-01 Potência Ativa'",
+        "ug01_p_reativa as 'UG-01 Potência Reativa'",
+        "ug01_p_aparente as 'UG-01 Potência Aparente'",
+        "ug01_fp as 'UG-01 Fator de Potência'",
+        "ug02_p_ativa as 'UG-02 Potência Ativa'",
+        "ug02_p_reativa as 'UG-02 Potência Reativa'",
+        "ug02_p_aparente as 'UG-02 Potência Aparente'",
+        "ug02_fp as 'UG-02 Fator de Potência'"
+      ]
+    },
+    "mecanica": {
+      "cgh_picadas_altas": [
+        "ug01_distribuidor as 'UG-01 Distribuidor'",
+        "ug01_velocidade as 'UG-01 Velocidade'",
+        "ug01_horimetro as 'UG-01 Horímetro'",
+        "ug02_distribuidor as 'UG-02 Distribuidor'",
+        "ug02_velocidade as 'UG-02 Velocidade'",
+        "ug02_horimetro as 'UG-02 Horímetro'"
+      ]
+    },
+    "hidraulica": {
+      "cgh_picadas_altas": [
+        "nivel_montante as 'Nível Montante'",
+        "nivel_jusante as 'Nível Jusante'"
+      ]
+    },
+    "pressoes": {
+      "cgh_picadas_altas": [
+        "ug01_pressao_uhrv as 'UG-01 Pressão Óleo UHRV'",
+        "ug02_pressao_uhrv as 'UG-02 Pressão Óleo UHRV'"
+      ]
+    },
+    "temperaturas": {
+      "cgh_picadas_altas": [
+        "ug01_temp_oleo_uhlm as 'UG-01 Temp. Óleo UHLM'",
+        "ug01_temp_1 as 'UG-01 Temp. Enrolamento Fase A'",
+        "ug01_temp_2 as 'UG-01 Temp. Enrolamento Fase B'",
+        "ug01_temp_3 as 'UG-01 Temp. Enrolamento Fase C'",
+        "ug01_temp_4 as 'UG-01 Temp. Núcleo'",
+        "ug01_temp_5 as 'UG-01 Temp. CS-U1'",
+        "ug01_temp_6 as 'UG-01 Temp. Mancal Comb. Radial LA'",
+        "ug01_temp_7 as 'UG-01 Temp. Mancal Comb. Escora LA'",
+        "ug01_temp_8 as 'UG-01 Temp. Mancal Comb. Contra-Escora LA'",
+        "ug01_temp_9 as 'UG-01 Temp. Mancal Guia LNA'",
+        "ug02_temp_oleo_uhlm as 'UG-02 Temp. Óleo UHLM'",
+        "ug02_temp_1 as 'UG-02 Temp. Enrolamento Fase A'",
+        "ug02_temp_2 as 'UG-02 Temp. Enrolamento Fase B'",
+        "ug02_temp_3 as 'UG-02 Temp. Enrolamento Fase C'",
+        "ug02_temp_4 as 'UG-02 Temp. Núcleo'",
+        "ug02_temp_5 as 'UG-02 Temp. CS-U1'",
+        "ug02_temp_6 as 'UG-02 Temp. Mancal Comb. Radial LA'",
+        "ug02_temp_7 as 'UG-02 Temp. Mancal Comb. Escora LA'",
+        "ug02_temp_8 as 'UG-02 Temp. Mancal Comb. Contra-Escora LA'",
+        "ug02_temp_9 as 'UG-02 Temp. Mancal Guia LNA'",
+        "temp_ambiente as 'Temperatura Ambiente'"
+      ]
+    },
+    "diversos": {
+      "cgh_picadas_altas": [
+        "ug01_fluxo_1 as 'UG-01 Fluxo Óleo Mancal Radial LA'",
+        "ug01_fluxo_2 as 'UG-01 Fluxo Óleo Mancal Escora LA'",
+        "ug01_fluxo_3 as 'UG-01 Fluxo Óleo Mancal Contra-Escora LA'",
+        "ug01_fluxo_4 as 'UG-01 Fluxo Óleo Mancal Radial LNA'",
+        "ug02_fluxo_1 as 'UG-02 Fluxo Óleo Mancal Radial LA'",
+        "ug02_fluxo_2 as 'UG-02 Fluxo Óleo Mancal Escora LA'",
+        "ug02_fluxo_3 as 'UG-02 Fluxo Óleo Mancal Contra-Escora LA'",
+        "ug02_fluxo_4 as 'UG-02 Fluxo Óleo Mancal Radial LNA'"
+      ]
+    }
+  },
+  "PCH-PIRA":{
+    "descricao": "PCH Pira - 5 UGs",
+    "tabelas": [
+      "geracaoAcumulada"
+    ],
+    "identificacao":{
+      "geracaoAcumulada":[
+      "Time_Stamp",
+      "Time_Stamp_ms"
+        ]
+    }
+    "status":{},
+    "energia":{
+      "geracaoAcumulada":[
+      "geracaoug01 as 'UG-01 Energia Acumulada'",
+      "geracaoug02 as 'UG-02 Energia Acumulada'",
+      "geracaoug03 as 'UG-03 Energia Acumulada'",
+      "geracaoug04 as 'UG-04 Energia Acumulada'",
+      "geracaomc01 as 'UG-05 Energia Acumulada'"
+        ]
+    },
+  },
+  "CGH-HOPPEN": {
+    "descricao": "CGH Hoppen - 2 UGs",
+    "tabelas": [
+      "cgh_hoppen_ug01",
+      "cgh_hoppen_ug02"
+    ],
+    "identificacao": {
+      "cgh_hoppen_ug01": [
+        "id",
+        "data_hora"
+      ],
+      "cgh_hoppen_ug02": [
+        "id",
+        "data_hora"
+      ]
+    },
+    "status": {
+      "cgh_hoppen_ug01": [
+        "status_turbina as 'UG-01 Status'"
+      ],
+      "cgh_hoppen_ug02": [
+        "status_turbina as 'UG-02 Status'"
+      ]
+    },
+    "energia": {
+      "cgh_hoppen_ug01": [
+        "acumulador_energia as 'UG-01 Energia Acumulada'"
+      ],
+      "cgh_hoppen_ug02": [
+        "acumulador_energia as 'UG-02 Energia Acumulada'"
+      ]
+    },
+    "eletrica": {
+      "cgh_hoppen_ug01": [
+        "tensao_fase_AB as 'UG-01 Tensão Fase A'",
+        "tensao_fase_BC as 'UG-01 Tensão Fase B'",
+        "tensao_fase_CA as 'UG-01 Tensão Fase C'",
+        "corrente_fase_AB as 'UG-01 Corrente Fase A'",
+        "corrente_fase_BC as 'UG-01 Corrente Fase B'",
+        "corrente_fase_CA as 'UG-01 Corrente Fase C'",
+        "excitacao_tensao as 'UG-01 Tensão Excitação'",
+        "excitasao_corrente as 'UG-01 Corrente Excitação'",
+        "frequencia as 'UG-01 Frequência'"
+      ],
+      "cgh_hoppen_ug02": [
+        "tensao_fase_AB as 'UG-02 Tensão Fase A'",
+        "tensao_fase_BC as 'UG-02 Tensão Fase B'",
+        "tensao_fase_CA as 'UG-02 Tensão Fase C'",
+        "corrente_fase_AB as 'UG-02 Corrente Fase A'",
+        "corrente_fase_BC as 'UG-02 Corrente Fase B'",
+        "corrente_fase_CA as 'UG-02 Corrente Fase C'",
+        "excitacao_tensao as 'UG-02 Tensão Excitação'",
+        "excitasao_corrente as 'UG-02 Corrente Excitação'",
+        "frequencia as 'UG-02 Frequência'"
+      ]
+    },
+    "potencia": {
+      "cgh_hoppen_ug01": [
+        "potencia_ativa as 'UG-01 Potência Ativa'",
+        "potencia_reativa as 'UG-01 Potência Reativa'",
+        "potencia_aparente as 'UG-01 Potência Aparente'",
+        "fp as 'UG-01 Fator de Potência'"
+      ],
+      "cgh_hoppen_ug02": [
+        "potencia_ativa as 'UG-02 Potência Ativa'",
+        "potencia_reativa as 'UG-02 Potência Reativa'",
+        "potencia_aparente as 'UG-02 Potência Aparente'",
+        "fp as 'UG-02 Fator de Potência'"
+      ]
+    },
+    "mecanica": {
+      "cgh_hoppen_ug01": [
+        "distribuidor as 'UG-01 Distribuidor'",
+        "rotor as 'UG-01 Rotor'",
+        "velocidade as 'UG-01 Velocidade'",
+        "horimetro as 'UG-01 Horímetro'"
+      ],
+      "cgh_hoppen_ug02": [
+        "distribuidor as 'UG-02 Distribuidor'",
+        "rotor as 'UG-02 Rotor'",
+        "velocidade as 'UG-02 Velocidade'",
+        "horimetro as 'UG-02 Horímetro'"
+      ]
+    },
+    "hidraulica": {
+      "cgh_hoppen_ug01": [
+        "nivel_montante_grade as 'UG-01 Nível Montante Grade'"
+      ],
+      "cgh_hoppen_ug02": [
+        "nivel_montante_grade as 'UG-02 Nível Montante Grade'"
+      ]
+    },
+    "pressoes": {
+      "cgh_hoppen_ug01": [
+        "pressao_montante as 'UG-01 Pressão Montante'",
+        "pressao_UHRV as 'UG-01 Pressão Óleo UHRV'"
+      ],
+      "cgh_hoppen_ug02": [
+        "pressao_montante as 'UG-02 Pressão Montante'",
+        "pressao_UHRV as 'UG-02 Pressão Óleo UHRV'"
+      ]
+    },
+    "temperaturas": {
+      "cgh_hoppen_ug01": [
+        "temp_oleo_UHLM as 'UG-01 Temp. Óleo UHLM'",
+        "temp_oleo_UHRV as 'UG-01 Temp. Óleo UHRV'",
+        "temp_enrol_fase_A as 'UG-01 Temp. Enrolamento Fase A'",
+        "temp_enrol_fase_B as 'UG-01 Temp. Enrolamento Fase B'",
+        "temp_enrol_fase_C as 'UG-01 Temp. Enrolamento Fase C'",
+        "temp_nucleo as 'UG-01 Temp. Núcleo'",
+        "temp_CSU1 as 'UG-01 Temp. CS-U1'",
+        "temp_vedacao_eixo_la as 'UG-01 Temp. Vedação Eixo LA'",
+        "temp_vedacao_eixo_lna as 'UG-01 Temp. Vedação Eixo LNA'",
+        "temp_manc_esc_comb as 'UG-01 Temp. Mancal Escora Combinado'",
+        "temp_manc_rad_comb as 'UG-01 Temp. Mancal Radial Combinado'",
+        "temp_cont_esc_manc_comb as 'UG-01 Temp. Contra-Escora Mancal Comb.'",
+        "temp_manc_rad_guia as 'UG-01 Temp. Mancal Radial Guia'",
+        "temp_manc_rad_comb_la as 'UG-01 Temp. Mancal Radial Comb. LA'",
+        "temp_manc_rad_comb_lna as 'UG-01 Temp. Mancal Radial Comb. LNA'"
+      ],
+      "cgh_hoppen_ug02": [
+        "temp_oleo_UHLM as 'UG-02 Temp. Óleo UHLM'",
+        "temp_oleo_UHRV as 'UG-02 Temp. Óleo UHRV'",
+        "temp_enrol_fase_A as 'UG-02 Temp. Enrolamento Fase A'",
+        "temp_enrol_fase_B as 'UG-02 Temp. Enrolamento Fase B'",
+        "temp_enrol_fase_C as 'UG-02 Temp. Enrolamento Fase C'",
+        "temp_nucleo as 'UG-02 Temp. Núcleo'",
+        "temp_CSU1 as 'UG-02 Temp. CS-U1'",
+        "temp_vedacao_eixo_la as 'UG-02 Temp. Vedação Eixo LA'",
+        "temp_vedacao_eixo_lna as 'UG-02 Temp. Vedação Eixo LNA'",
+        "temp_manc_esc_comb as 'UG-02 Temp. Mancal Escora Combinado'",
+        "temp_manc_rad_comb as 'UG-02 Temp. Mancal Radial Combinado'",
+        "temp_cont_esc_manc_comb as 'UG-02 Temp. Contra-Escora Mancal Comb.'",
+        "temp_manc_rad_guia as 'UG-02 Temp. Mancal Radial Guia'",
+        "temp_manc_rad_comb_la as 'UG-02 Temp. Mancal Radial Comb. LA'",
+        "temp_manc_rad_comb_lna as 'UG-02 Temp. Mancal Radial Comb. LNA'"
+      ]
+    }
+  }
+}
+
+
+
+'''

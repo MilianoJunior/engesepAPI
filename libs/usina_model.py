@@ -4,10 +4,11 @@
 # 2. __init__                     → recebe config de usinas e instância de Database
 # 3. buscar_dados_usina           → monta queries, busca no banco, merge multi-tabela
 # 4. buscar_por_grupo             → consulta colunas de um grupo específico
-# 5. _montar_query                → gera SQL conforme período (mensal com CTE ou padrão)
-# 6. _tratar_dataframe            → cast tipos, remove negativos e sentinela 103.00
-# 7. _renomear_coluna_multi_ug    → renomeia coluna com prefixo ugXX_ e arredonda data_hora
-# 8. _merge_dataframes            → merge outer de múltiplos DataFrames por data_hora
+# 5. _extrair_info_temporal       → detecta coluna temporal real via config identificacao
+# 6. _montar_query                → gera SQL conforme período e coluna temporal da usina
+# 7. _tratar_dataframe            → cast tipos, remove negativos e sentinela 103.00
+# 8. _normalizar_colunas_energia  → normaliza nomes para UG-XX Energia Acumulada
+# 9. _merge_dataframes            → merge outer de múltiplos DataFrames por data_hora
 # -------------------------------------------------------------------
 
 import json
@@ -128,7 +129,8 @@ class UsinaModel:
             if not colunas:
                 continue
 
-            query = self._montar_query(tabela, colunas, data_inicio, data_fim, periodo)
+            info_temporal = self._extrair_info_temporal(usina, tabela)
+            query = self._montar_query(tabela, colunas, data_inicio, data_fim, periodo, info_temporal)
             df_temp = self.db.fetch_dataframe(query)
             self._touch_connection()
             self._log_raw_dataframe(usina, tabela, periodo, colunas, query, df_temp)
@@ -148,9 +150,48 @@ class UsinaModel:
 
         return dfs
 
-    def _montar_query(self, tabela: str, colunas: list, data_inicio: str, data_fim: str, periodo: str) -> str:
-        """Gera SQL. Período mensal usa CTE com ROW_NUMBER para pegar bordas do mês."""
+    def _extrair_info_temporal(self, usina: str, tabela: str) -> dict:
+        """
+        Detecta coluna temporal real via config identificacao.
+        Suporta usinas com 'Time_Stamp as data_hora' + 'Time_Stamp_ms'.
+        Retorna dict com col_real, col_ms, select_expr, order_by.
+        """
+        id_cols = self.config.get(usina, {}).get('identificacao', {}).get(tabela, [])
+        col_real = 'data_hora'
+        col_ms = None
+
+        for col_def in id_cols:
+            col_lower = col_def.lower().strip()
+            if ' as ' in col_lower and 'data_hora' in col_lower:
+                parts = re.split(r'\s+as\s+', col_def, maxsplit=1, flags=re.IGNORECASE)
+                col_real = parts[0].strip()
+            elif col_lower.endswith('_ms'):
+                col_ms = col_def.strip()
+
+        if col_real == 'data_hora':
+            return {
+                'col_real': 'data_hora',
+                'col_ms': None,
+                'select_expr': 'data_hora',
+                'order_by': 'data_hora',
+            }
+
+        return {
+            'col_real': col_real,
+            'col_ms': col_ms,
+            'select_expr': f'{col_real} AS data_hora',
+            'order_by': f'{col_real}, {col_ms}' if col_ms else col_real,
+        }
+
+    def _montar_query(self, tabela: str, colunas: list, data_inicio: str, data_fim: str, periodo: str, info_temporal: dict = None) -> str:
+        """Gera SQL conforme período e coluna temporal da usina."""
+        if info_temporal is None:
+            info_temporal = {'col_real': 'data_hora', 'col_ms': None, 'select_expr': 'data_hora', 'order_by': 'data_hora'}
+
         col_str = ', '.join(colunas)
+        select_data = info_temporal['select_expr']
+        where_col = info_temporal['col_real']
+        order_col = info_temporal['order_by']
 
         if periodo == 'M':
             base_select_cols = []
@@ -170,19 +211,19 @@ class UsinaModel:
 
             return f"""WITH base AS (
                 SELECT
-                    data_hora,
+                    {select_data},
                     {base_cols_str},
-                    DATE_FORMAT(data_hora, '%Y-%m-01') AS mes_ini,
+                    DATE_FORMAT({where_col}, '%Y-%m-01') AS mes_ini,
                     ROW_NUMBER() OVER (
-                        PARTITION BY YEAR(data_hora), MONTH(data_hora)
-                        ORDER BY data_hora ASC
+                        PARTITION BY YEAR({where_col}), MONTH({where_col})
+                        ORDER BY {order_col} ASC
                     ) AS rn_asc,
                     ROW_NUMBER() OVER (
-                        PARTITION BY YEAR(data_hora), MONTH(data_hora)
-                        ORDER BY data_hora DESC
+                        PARTITION BY YEAR({where_col}), MONTH({where_col})
+                        ORDER BY {order_col} DESC
                     ) AS rn_desc
                 FROM {tabela}
-                WHERE data_hora >= '{data_inicio}' AND data_hora <= '{data_fim}'
+                WHERE {where_col} >= '{data_inicio}' AND {where_col} <= '{data_fim}'
             ),
             filtrada AS (
                 SELECT * FROM base
@@ -193,9 +234,9 @@ class UsinaModel:
             ORDER BY data_hora"""
 
         return (
-            f'SELECT data_hora, {col_str} FROM {tabela} '
-            f'WHERE data_hora >= "{data_inicio}" AND data_hora <= "{data_fim}" '
-            f'ORDER BY data_hora'
+            f'SELECT {select_data}, {col_str} FROM {tabela} '
+            f'WHERE {where_col} >= "{data_inicio}" AND {where_col} <= "{data_fim}" '
+            f'ORDER BY {order_col}'
         )
 
     def _garantir_conexao(self):

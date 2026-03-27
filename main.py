@@ -31,6 +31,7 @@ from typing import Literal
 from dotenv import load_dotenv
 import uvicorn
 import os
+import subprocess
 import sys
 import threading
 import psutil
@@ -131,6 +132,27 @@ def _df_to_json(df: pd.DataFrame) -> list[dict]:
     return resultado
 
 
+# ======================== VERSÃO ========================
+
+def _obter_versao() -> str:
+    """Retorna versão da API a partir do git (hash curto + data do commit)."""
+    try:
+        hash_curto = subprocess.check_output(
+            ['git', 'rev-parse', '--short', 'HEAD'],
+            stderr=subprocess.DEVNULL, text=True
+        ).strip()
+        data_commit = subprocess.check_output(
+            ['git', 'log', '-1', '--format=%ci'],
+            stderr=subprocess.DEVNULL, text=True
+        ).strip()[:16]
+        return f"{hash_curto} ({data_commit})"
+    except Exception:
+        return 'desconhecida'
+
+
+API_VERSION = _obter_versao()
+
+
 # ======================== MONITORAMENTO DE MEMÓRIA ========================
 
 _proc = psutil.Process(os.getpid())
@@ -158,6 +180,8 @@ def _log_memoria(prefixo: str = '[MEM]'):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    print(f"[STARTUP] ENGESEP API versão: {API_VERSION}")
+    print(f"[STARTUP] Usinas configuradas: {', '.join(USINAS_CONFIG.keys())}")
     _log_memoria('[MEM][STARTUP]')
     _migrar_banco()
     yield
@@ -190,7 +214,7 @@ def _migrar_banco():
 
 
 
-app = FastAPI(title="ENGESEP API v1", version="2.0.0", lifespan=lifespan)
+app = FastAPI(title="ENGESEP API", version=API_VERSION, lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_credentials=True,
     allow_methods=["*"], allow_headers=["*"],
