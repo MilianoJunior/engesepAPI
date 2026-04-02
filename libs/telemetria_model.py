@@ -5,8 +5,9 @@
 # 3. buscar_sensor           → consulta variável individual → retorna DataFrame bruto
 # 4. listar_grupos           → retorna dict de grupos e aliases disponíveis
 # 5. _localizar_variavel     → encontra tabela e coluna SQL a partir do alias
-# 6. _consultar              → executa query → retorna DataFrame
-# 7. _montar_query           → gera SQL SELECT com filtro de data
+# 6. _extrair_info_temporal  → detecta coluna temporal (data_hora / Time_Stamp)
+# 7. _consultar              → executa query → retorna DataFrame
+# 8. _montar_query           → gera SQL SELECT com filtro de data e coluna temporal
 # -------------------------------------------------------------------
 
 import os
@@ -43,13 +44,12 @@ class TelemetriaModel:
         cache_key = f'telemetria_grupo:{usina}|{grupo}|{data_inicio}|{data_fim}'
 
         def _buscar_grupo():
-            tabelas = cfg['tabelas']
             dfs = []
-            for tabela in tabelas:
-                colunas = mapa.get(tabela, [])
+            for tabela, colunas in mapa.items():
                 if not colunas:
                     continue
-                df = self._consultar(tabela, colunas, data_inicio, data_fim)
+                info_temporal = self._extrair_info_temporal(usina, tabela)
+                df = self._consultar(tabela, colunas, data_inicio, data_fim, info_temporal)
                 if not df.empty:
                     dfs.append(df)
             if not dfs:
@@ -68,7 +68,8 @@ class TelemetriaModel:
 
         def _buscar_sensor():
             grupo, tabela, coluna_sql = self._localizar_variavel(usina, variavel)
-            df = self._consultar(tabela, [coluna_sql], data_inicio, data_fim)
+            info_temporal = self._extrair_info_temporal(usina, tabela)
+            df = self._consultar(tabela, [coluna_sql], data_inicio, data_fim, info_temporal)
             return df if not df.empty else None
 
         if self.cache_enabled:
@@ -76,7 +77,8 @@ class TelemetriaModel:
             return resultado if resultado is not None else pd.DataFrame()
 
         grupo, tabela, coluna_sql = self._localizar_variavel(usina, variavel)
-        df = self._consultar(tabela, [coluna_sql], data_inicio, data_fim)
+        info_temporal = self._extrair_info_temporal(usina, tabela)
+        df = self._consultar(tabela, [coluna_sql], data_inicio, data_fim, info_temporal)
         return df if not df.empty else pd.DataFrame()
 
     def listar_grupos(self, usina: str) -> dict:
@@ -114,10 +116,42 @@ class TelemetriaModel:
             f'Variável "{alias_buscado}" não encontrada na usina {usina}.'
         )
 
-    def _consultar(self, tabela: str, colunas: list[str], data_inicio: str, data_fim: str) -> pd.DataFrame:
+    def _extrair_info_temporal(self, usina: str, tabela: str) -> dict:
+        """Detecta coluna temporal via config identificacao. Herda de sibling se ausente."""
+        id_map = self.config.get(usina, {}).get('identificacao', {})
+        id_cols = id_map.get(tabela, [])
+
+        if not id_cols:
+            for cols in id_map.values():
+                if any(' as ' in c.lower() and 'data_hora' in c.lower() for c in cols):
+                    id_cols = cols
+                    break
+
+        col_real = 'data_hora'
+        col_ms = None
+
+        for col_def in id_cols:
+            col_lower = col_def.lower().strip()
+            if ' as ' in col_lower and 'data_hora' in col_lower:
+                parts = re.split(r'\s+as\s+', col_def, maxsplit=1, flags=re.IGNORECASE)
+                col_real = parts[0].strip()
+            elif col_lower.endswith('_ms'):
+                col_ms = col_def.strip()
+
+        if col_real == 'data_hora':
+            return {'col_real': 'data_hora', 'col_ms': None, 'select_expr': 'data_hora', 'order_by': 'data_hora'}
+
+        return {
+            'col_real': col_real,
+            'col_ms': col_ms,
+            'select_expr': f'{col_real} AS data_hora',
+            'order_by': f'{col_real}, {col_ms}' if col_ms else col_real,
+        }
+
+    def _consultar(self, tabela: str, colunas: list[str], data_inicio: str, data_fim: str, info_temporal: dict = None) -> pd.DataFrame:
         """Executa query e retorna DataFrame bruto."""
         self._garantir_conexao()
-        query = self._montar_query(tabela, colunas, data_inicio, data_fim)
+        query = self._montar_query(tabela, colunas, data_inicio, data_fim, info_temporal)
         df = self.db.fetch_dataframe(query)
         self._touch_connection()
 
@@ -133,13 +167,20 @@ class TelemetriaModel:
 
         return df
 
-    def _montar_query(self, tabela: str, colunas: list[str], data_inicio: str, data_fim: str) -> str:
-        """Gera SQL SELECT com filtro de data."""
+    def _montar_query(self, tabela: str, colunas: list[str], data_inicio: str, data_fim: str, info_temporal: dict = None) -> str:
+        """Gera SQL SELECT com filtro de data e coluna temporal dinâmica."""
+        if info_temporal is None:
+            info_temporal = {'col_real': 'data_hora', 'col_ms': None, 'select_expr': 'data_hora', 'order_by': 'data_hora'}
+
         col_str = ', '.join(colunas)
+        select_data = info_temporal['select_expr']
+        where_col = info_temporal['col_real']
+        order_col = info_temporal['order_by']
+
         return (
-            f'SELECT data_hora, {col_str} FROM {tabela} '
-            f'WHERE data_hora >= "{data_inicio}" AND data_hora <= "{data_fim}" '
-            f'ORDER BY data_hora'
+            f'SELECT {select_data}, {col_str} FROM {tabela} '
+            f'WHERE {where_col} >= "{data_inicio}" AND {where_col} <= "{data_fim}" '
+            f'ORDER BY {order_col}'
         )
 
     def _merge_dataframes(self, dfs: list[pd.DataFrame]) -> pd.DataFrame:
