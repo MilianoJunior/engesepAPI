@@ -116,7 +116,8 @@
     },
     "hidraulica": {
       "mc01Analogicas": [
-        "NVMontante as 'Nível Montante'"
+        "NVMontante as 'Nível Montante'",
+        "NvJusante as 'Nível Jusante'"
       ]
     }
   },
