@@ -233,12 +233,51 @@ usina_model = UsinaModel(db)
 telemetria_model = TelemetriaModel(db)
 calculos = Calculos()
 
-TOKEN = os.getenv('API_TOKEN', '12345678')
+TOKEN = os.getenv('API_TOKEN', '1234567818')
 
 
 def _validar_token(token: str | None):
     if not token == TOKEN:
-        raise HTTPException(status_code=401, detail="Token inválido ou ausente")
+        erros = {
+            # --- Rede / Comunicação ---
+            1: 'Sobrecarga no carregamento',
+            2: 'Loop de conexão',
+            3: 'Bloqueio de segurança',
+            4: 'Conexão instável',
+            5: 'Timeout de resposta do CLP',
+            6: 'Falha ao resolver DNS',
+            7: 'Pacotes perdidos na comunicação',
+            8: 'Porta remota não disponível',
+
+            # --- Concorrência / Controle ---
+            20: 'Múltiplas conexões simultâneas detectadas',
+            21: 'Requisição duplicada em intervalo curto',
+            22: 'Reentrada não permitida na função',
+            23: 'Deadlock detectado',
+            24: 'Thread não respondeu a tempo',
+
+            # --- Segurança ---
+            40: 'Acesso não autorizado',
+            41: 'Token inválido ou expirado',
+            42: 'Tentativa de acesso bloqueada por firewall',
+            43: 'Assinatura de requisição inválida',
+
+            # --- Dados / Leitura ---
+            60: 'Falha na leitura de registrador',
+            61: 'Valor fora do range esperado',
+            62: 'Conversão de dados inválida (word order)',
+            63: 'Dados inconsistentes recebidos',
+            64: 'CLP retornou valor nulo',
+
+            # --- Sistema / Infra ---
+            80: 'Memória insuficiente',
+            81: 'CPU em uso crítico',
+            82: 'Serviço externo indisponível',
+            83: 'Erro interno inesperado',
+        }
+        import random
+        erro = random.choice(list(erros.values()))
+        raise HTTPException(status_code=401, detail=erro)
 
 
 # ── Produção de Energia ──
