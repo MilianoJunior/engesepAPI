@@ -117,6 +117,9 @@
     "hidraulica": {
       "mc01Analogicas": [
         "NVMontante as 'Nível Montante'"
+      ],
+      "vazao_pira":[
+        "vazao as 'Vazão'"
       ]
     }
   },
