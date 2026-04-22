@@ -102,7 +102,14 @@
       "geracaoAcumulada":[
       "Time_Stamp as data_hora",
       "Time_Stamp_ms"
-        ]
+        ],
+      "mc01Analogicas":[
+        "Time_Stamp as data_hora",
+        "Time_Stamp_ms"
+      ],
+      "vazao_pira":[
+        "data_hora"
+      ]
     },
     "status":{},
     "energia":{
