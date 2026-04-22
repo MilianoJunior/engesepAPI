@@ -60,7 +60,8 @@ class TelemetriaModel:
             resultado = CacheStore.get_or_set(cache_key, _buscar_grupo, ttl_seconds=self.cache_ttl_seconds)
             return resultado if resultado is not None else pd.DataFrame()
 
-        return _buscar_grupo() or pd.DataFrame()
+        resultado = _buscar_grupo()
+        return resultado if resultado is not None else pd.DataFrame()
 
     def buscar_sensor(self, usina: str, variavel: str, data_inicio: str, data_fim: str) -> pd.DataFrame:
         """Consulta variável individual pelo alias → retorna DataFrame bruto."""
