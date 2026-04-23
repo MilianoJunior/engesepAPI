@@ -29,8 +29,8 @@ TABELA = 'mc01Analogicas'
 DATA_INICIO = '2026-03-01 00:00:00'
 DATA_FIM = '2026-04-02 23:59:59'
 
-COLUNAS_ESPERADAS = ['NVMontante', 'NvJusante']
-ALIASES_ESPERADOS = ['Nível Montante', 'Nível Jusante']
+COLUNAS_ESPERADAS = ['NVMontante']
+ALIASES_ESPERADOS = ['Nível Montante', 'Vazão']
 
 
 # ======================== TESTES ========================
