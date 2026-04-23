@@ -2,9 +2,9 @@
 # FLUXO DO MÓDULO
 # 1. processar_sensor    → recebe DF bruto → filtra outliers → resample automático
 # 2. processar_grupo     → idem para grupo (múltiplas colunas)
-# 3. filtrar_outliers    → IQR: substitui outliers pelo último valor válido (ffill)
+# 3. filtrar_outliers    → IQR: substitui outliers por NA (sem ffill para não distorcer variáveis esparsas)
 # 4. calcular_resolucao  → define freq de resample com base no intervalo
-# 5. aplicar_resample    → resample por média (ou .last() para status)
+# 5. aplicar_resample    → resample dinâmico por coluna: média (<= 10m) ou dado bruto (> 10m)
 # -------------------------------------------------------------------
 
 import pandas as pd
@@ -51,7 +51,7 @@ def processar_grupo(df: pd.DataFrame, data_inicio: str, data_fim: str,
 # ======================== FUNÇÕES DE PROCESSAMENTO ========================
 
 def filtrar_outliers(df: pd.DataFrame) -> pd.DataFrame:
-    """Substitui outliers (IQR) pelo último valor válido (ffill)."""
+    """Substitui outliers (IQR) por NA sem ffill para preservar esparsidade."""
     if df.empty:
         return df
 
@@ -70,7 +70,6 @@ def filtrar_outliers(df: pd.DataFrame) -> pd.DataFrame:
         mascara = (serie < limite_inf) | (serie > limite_sup)
         if mascara.any():
             df.loc[mascara, col] = pd.NA
-            df[col] = df[col].ffill()
 
     return df
 
@@ -89,15 +88,32 @@ def calcular_resolucao(data_inicio: str, data_fim: str) -> str:
 
 
 def aplicar_resample(df: pd.DataFrame, freq: str, usar_last: bool = False) -> pd.DataFrame:
-    """Resample do DataFrame pela frequência calculada."""
+    """Resample dinâmico: média para alta frequência, valor exato para baixa."""
     if df.empty or freq == '1min':
         return df
 
     df = df.set_index('data_hora')
+    
     if usar_last:
         df = df.resample(freq).last()
-    else:
-        df = df.resample(freq).mean()
+        return df.dropna(how='all').reset_index()
 
-    df = df.dropna(how='all').reset_index()
-    return df
+    # Prepara dataframe de saída com o mesmo índice do resample
+    df_resampled = pd.DataFrame(index=df.resample(freq).first().index)
+
+    for col in df.columns:
+        serie_valida = df[col].dropna()
+        if len(serie_valida) > 1:
+            delta_minutos = serie_valida.index.to_series().diff().dt.total_seconds().median() / 60.0
+        else:
+            delta_minutos = 0
+            
+        if delta_minutos > 10:
+            # Resolução baixa (ex: 1 hora) -> mantém o dado cru no bucket (sem média)
+            df_resampled[col] = df[col].resample(freq).first()
+        else:
+            # Resolução alta (ex: 1 minuto) -> aplica média no bucket
+            df_resampled[col] = df[col].resample(freq).mean()
+
+    df_resampled = df_resampled.dropna(how='all').reset_index()
+    return df_resampled
